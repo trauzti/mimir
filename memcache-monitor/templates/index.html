@@ -1,0 +1,9 @@
+{% extends "main.html" %}
+{% block content %}
+    <div class="hero-unit offset2 span7">
+        <h1>Hello there{{ ', %s' % current_user.username if current_user else 'Guest' }}!</h1>
+        <p>
+         Hope you're doing well!
+        </p>
+    </div>
+{% endblock %}

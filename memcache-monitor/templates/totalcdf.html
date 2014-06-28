@@ -1,0 +1,17 @@
+{% extends "main.html" %}
+{% block content %}
+
+{% for fn in fns %}
+<div class="span6">
+<h3 style="margin-left: 75px;">Joined CDFs from all slabclasses</h3>
+<a href="{{ url_for('static', filename=fn) }}?m={{ r}}" target="_blank"><img src="{{ url_for('static', filename=fn) }}?m={{ r}}" /></a>
+</div>
+{% endfor %}
+
+<style type="text/css">
+.row-fluid [class*="span"] {
+    margin-left: 0;
+}
+</style>
+
+{% endblock %}

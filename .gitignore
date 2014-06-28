@@ -1,0 +1,15 @@
+*.pyc
+*.bf
+env
+*.swp
+*.o
+*.gcno
+flask-memcached-monitor/static/img
+*.cf
+memcached-1.4.15/autom4te.cache
+memcached-1.4.15/.deps
+memcached-1.4.15/*.log
+memcached-1.4.15/memcached
+memcached-1.4.15/memcached-debug
+python_memcached/output*
+python_memcached/images*

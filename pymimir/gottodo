@@ -1,0 +1,16 @@
+ * optimize the countingfilter ghostlist heavily
+ * memcached countingfilter ghostlist graph, go from 40% to 10% throughput drop
+
+[[ todo ]]
+  * set up the background thread in memcached (maybe use the lru_crawler thread)
+  * python server support sending the cdf via telnet
+  * finish this up for SoCC and get it accepted there!
+
+[[ done ]]
+  * google hangout with ymir to prettify the text
+  * flask admin connect to pymimir or memcached
+  * describe the telnet API in the masters thesis
+  * all cache algorithms statistics
+  * write a short introduction to memcached
+  * related work graph, change to throughput
+  * finish writing the cache algorithm introduction

@@ -1,0 +1,7 @@
+[report]
+omit = 
+    *numpy*
+    *argparse*
+    *ctypes*
+    *twisted*
+    *zope*

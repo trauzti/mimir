@@ -1,0 +1,218 @@
+{% extends "main.html" %}
+{% block content %}
+
+
+<style type="text/css">
+.row-fluid [class*="span"] {
+    margin-left: 0;
+}
+</style>
+
+
+<style type="text/css">
+  #subsetData{float:left;}
+
+  #mask{
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+  }
+  #mask div{
+    position: absolute;
+    font-size: 4em;
+    font-weight: bold;
+    color: #9da0a4;
+  }
+  .cdfForm{
+    position: relative;
+    margin: 25px 50px;
+    padding: 39px 19px 14px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+  }
+  .cdfForm:after{
+    content: "CDF Data input area";
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    padding: 3px 7px;
+    font-size: 12px;
+    font-weight: bold;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    color: #9da0a4;
+    -webkit-border-radius: 4px 0 4px 0;
+    -moz-border-radius: 4px 0 4px 0;
+    border-radius: 4px 0 4px 0;
+  }
+  .cdfForm div.textContainer{
+    white-space: nowrap;
+    float: left;
+    width: auto;
+  }
+  .cdfForm div.textContainer div{
+    float:left;
+    padding: 5px 10px 5px 10px;
+  }
+  form div.form-actions{clear:both;}
+
+  /*  the following rules are specific for the svg */
+  rect { fill: #fff; }
+  .popup rect { fill-opacity:0.8;}
+  .focus line {
+    stroke: red;
+    stroke-width:1.5px;
+  }
+  .focus text tspan{
+    font-size: 0.8em;
+    font-weight: bold;
+    fill:red;
+  }
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+  }
+
+  .line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+  }
+</style>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+
+{% for i in range(42) %}
+<div id="container span2">
+    <b style="margin-left: 10px;"> Slab #{{ i+1 }} {{ hits[i] }} </b>
+<div id="graph_{{i}}">
+</div>
+</div>
+{% endfor %}
+
+
+
+
+<script type="text/javascript">
+
+function generateCDF(){
+  event.preventDefault();
+  generateCDF_plot();
+  return false;
+}
+
+// define the margin, height, and witdth of the plot
+var margin = {top: 20, right: 30, bottom: 30, left: 80},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+
+generateCDF_plot();
+
+
+// generate the main cdf plot
+function generateCDF_plot(){
+    var datas = [ {% for clsid in range(42) %} [ {% for w in d3cdfs[clsid] %} { 'x': {{w['x']}}, 'y': {{w['y'] }} }, {% endfor %}],  {% endfor %} ] ;
+    console.log(datas[0]);
+  for (var i = 0; i < 42; i++) {
+   (function() {
+  // pull in the data from the textarea element
+    // defined the x range for plot data (this can be used to map
+    // between plot values and where they are actually plotted on the graph)
+    var x = d3.scale.linear()
+        .range([0, width]);
+    // same for x
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    // define the xAxis hashes
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom");
+
+    // define the yAxis hashes
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+
+    // define the cdf plot line
+    var line = d3.svg.line()
+        .x(function(d) { return x(d.x); })
+        .y(function(d) { return y(d.y); });
+
+    // var zoom = d3.behavior.zoom()
+    //     .scaleExtent([1, 10])
+    //     .on("zoom", zoomed);
+
+    // append the svg to the web page
+
+    var svg = d3.select('#graph_' + i).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        //.call(d3.behavior.zoom().scaleExtent([1, 8]));
+
+
+    // setup color scale -- this will be used so that every dataset ploted is associated with a different color
+    var color = d3.scale.category10();
+  console.log(datas[i]);
+    var dataLength = datas[i].length;
+    /*
+    for (var i = 0; i < dataLength; i++) {
+      data[i].x =  +data[i].x*-1;
+      data[i].y = +((i+1)/dataLength);
+      dataLookup[data[i].orf]=data[i].x;
+    };
+    */
+
+    // scale the x and y axis according the the max and min values, could also keep
+    // track of min and max values in loop above. The .nice() will round the min and max values to
+    // nice values
+    x.domain(d3.extent(datas[i], function(d) { return d.x; })).nice();
+    y.domain(d3.extent(datas[i], function(d) { return d.y; })).nice();
+
+    // append the x axis and its label to the plot
+    svg.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(0," + height + ")")
+          .call(xAxis)
+        .append("text")
+          .attr("class", "label")
+          .attr("x", width)
+          .attr("y", -6)
+          .style("text-anchor", "end")
+          .text("Score");
+
+    // append y-axis and its label...
+    svg.append("g")
+          .attr("class", "y axis")
+          .call(yAxis)
+        .append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 6)
+          .attr("dy", ".71em")
+          .style("text-anchor", "end")
+          .text("Fraction of Data");
+
+    // append the actual line to the graph
+    svg.append("path").datum(datas[i]).attr("class", "line").attr("d", line).style("stroke", function(d) { return color("initial"); });
+
+    // load the other cdf data. The will be loaded as a scatter plot (i.e. discrete points) instead of lines
+    //return(loadOtherCSVs());
+   })();
+   }
+
+}
+
+
+
+
+</script>
+
+{% endblock %}

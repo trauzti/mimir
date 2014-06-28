@@ -1,0 +1,21 @@
+
+Installing requirements
+--------
+# No requirements
+
+Running tests
+--------
+
+    $ pip install -r requirements.txt # for the nosetest package
+    $ nosetests --with-coverage
+
+
+==== Start the server ===
+This starts the server with the ARC cache replacement algorithm and capacity for 100 elements on port 1337
+
+    $ python2 cache.py -c ARC -n 100 -P 1337
+
+Issue Report
+------------
+trauzti@gmail.com
+github.com/trauzti/mimir

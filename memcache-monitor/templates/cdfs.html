@@ -1,0 +1,19 @@
+{% extends "main.html" %}
+{% block content %}
+
+{% set i=1 %}
+{% for fn in fns %}
+<div class="span2">
+<b style="margin-left: 10px;"> Slab #{{ i }}</b>
+<a href="{{ url_for('static', filename=fn) }}?m={{ r}}" target="_blank"><img src="{{ url_for('static', filename=fn) }}?m={{ r}}" /></a>
+</div>
+{% set i=i+1 %}
+{% endfor %}
+
+<style type="text/css">
+.row-fluid [class*="span"] {
+    margin-left: 0;
+}
+</style>
+
+{% endblock %}

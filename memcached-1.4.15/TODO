@@ -1,0 +1,79 @@
+CountingFilter ghostlist
+===========================================
+Use it in statistics.c to make the ghostPLUS
+
+
+Ideas for improvement
+===========================================
+3-4 bucket CountingFilter for the main cache instead?
+
+
+ Throughput measurements
+===================================
+ * 10 YCSB clents => 1.5M TOPS?
+
+ Latency measurements
+===================================
+ * Collect the latency histogram buckets from YCSB
+ * Compare the latency from memcached_rounder with memcached
+
+
+
+Steps to code cleanup + open source
+===================================
+* Test for the LRU implementation
+* Open sourcea kóðann okkar fyrir simulatorinn og memcached addonið okkar.
+* Fjarlægja alla óþarfa lása.
+* Skella spinlock á uppfærslurnar ef aging kemst á milli fetch á e.activity og  uppfærsla á bucketcounters.
+* Bisect and find the bottleneck 
+  - double -> float
+  - no plus updates
+  - no get stack distance call
+  - láta annan þráð labba í gegnum bucket array-ið og uppfæra plus arrayið til að spara tíma
+* Bæta við einum statistics þræði
+  
+
+Steps to implement the ghost list in memcached without overhead
+===============================================================
+
+* Útskýra hvernig ghostlistinn er impossible
+* Special linked list for each slab, no headers, just keys. 
+* We need pointers because unlinking is neccessary
+
+
+Future work
+=====================
+==== MemC3
+* Gætum bætt ghostlista við MemC3 og sett okkar statistics
+==== Related work
+* AVL tree statistics
+
+
+Not impossible!
+======================
+* Útskýra að overheadið í memcached útaf headernum er non-negligible ef nota skyldi ghost lista.
+
+[[ done ]]
+Steps to code cleanup + open source
+===================================
+* Laga stærðina á PDFinu => Svo að það sé ekki huge
+* Fjarlægja alla óþarfa lása.
+
+Monitoring tool sem sækir pdf+cdf og birtir
+===========================================
+* Step1: Send the PDF over with stats pdf
+* Step2: Receive the PDF and print it in MCslab
+* Step3: Generate a graph from the PDF and show it in MCslab
+* Step4: PDF for each slabclass
+* Step5: Graph from each PDF
+* Step6: Send the PLUS array over with stats fastplus
+* Step7: Multiple PLUS arrays
+
+Latency graph/discussion
+========================
+* Parse the libmemcached outputs and get the latency
+* Use mutilate to gather latency
+
+C simulator
+====================
+* Endurvekja LRU implementationið okkar gamla og tengja það við nýjasta statistics.c

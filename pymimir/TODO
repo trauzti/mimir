@@ -1,0 +1,12 @@
+# set the cache size in the web interface
+# when the cache size is increased, allow extra items to be inserted
+# when the cache size is decreased, with LRU, evict the oldest, with CLOCK evict from the hand
+# just like Rick Buskens talked about. This could be used by Heroku or Google. 
+# See the hit rate curve live in the web interface, see requests per second live
+# what about using datadog, export the telnet command to collectd
+# add/remove memory to the memcache live
+# A1) what to we need for this in the python implementation
+# A2) prototype this
+# B1) what to we need for this in the C memcached
+# B2) run this live. increase the memory of the memcached server live!
+# so awesome!!

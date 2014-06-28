@@ -1,0 +1,37 @@
+{% extends "main.html" %}
+{% block content %}
+{% from '_helpers.html' import social_login, render_field with context %}
+
+<h1> Login site </h1>
+
+        {% if registered %}
+            <div class="alert alert-success">
+                <h4>Registration successful!</h4>
+                Welcome! Go ahead and log in.
+            </div>
+        {% endif %}
+
+        {% if bad_login %}
+            <div class="alert alert-error">
+                <h4>Bad credentials!</h4>
+            </div>
+        {% endif %}
+
+
+<form action="{{ url_for('login') }}" method="POST" name="login_form">
+  {{ form.hidden_tag() }}
+  {{ render_field(form.username) }}
+  {{ render_field(form.password) }}
+  {{ form.submit }}
+</form>
+
+<!--
+
+{{ social_login('facebook', 'Facebook' )}}
+
+-->
+
+
+
+
+{% endblock %}

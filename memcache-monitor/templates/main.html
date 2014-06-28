@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block body %}
+
+<div class="navbar navbar-static-top" id="header">
+    <div class="navbar-inner">
+        <div class="container-fluid">
+            <a class="brand" href="{{ url_for('index') }}">Memcached slab monitoring</a>
+            <a class="navbar-text pull-left" href="{{ url_for('stats') }}">stats</a>
+            <a class="navbar-text pull-left" href="{{ url_for('slabstats') }}">slabstats</a>
+            <a class="navbar-text pull-left" href="{{ url_for('itemstats') }}">itemstats</a>
+            <a class="navbar-text pull-left" href="{{ url_for('getcdfs') }}">getcdfs</a>
+            <a class="navbar-text pull-left" href="{{ url_for('getroundercdfs') }}">getroundercdfs</a>
+            <a class="navbar-text pull-left" href="{{ url_for('getroundercdfsd3') }}">getroundercdfsd3</a>
+            <a class="navbar-text pull-left" href="{{ url_for('gettotalroundercdf') }}">gettotalroundercdf</a>
+            <ul class="nav pull-right">
+                <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="icon-user"></i> {{ current_user}} <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li> Hallo </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid" id="main">
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <h1> Tilkynningar: </h1>
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+</div>
+
+<div class="container-fluid" id="main">
+
+    <div class="row-fluid">
+        <div class="span2">
+            <ul class="nav sidebar-nav nav-list well" id="problem-list">
+                 {% set i=1 %}
+                  {% for mc in mcClients %}
+                  <li class="nav-header"><b>Servers in client #{{ i }}: </b></li>
+                  {% for server in mc.servers %}
+                   <li class="nav-header" style="font-size: 0.7em; margin-top: 0; margin-bottom: -6px;">{{ server }}</li>
+                  {% endfor %}
+                {% set i=i+1 %}
+                  {% endfor %}
+            </ul>
+        </div>
+        <div class="span10" id="content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <div class="row-fluid">
+        <div class="span12" id="footer" style="text-align: center">
+            <hr />
+            generated in {{ "%.04f" % (g.request_time() * 1000.0) }}ms by <span class="epsilon" title="epsilon">syslab @ru</span>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
