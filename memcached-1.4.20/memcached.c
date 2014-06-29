@@ -2858,6 +2858,9 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
     item *it;
     token_t *key_token = &tokens[KEY_TOKEN];
     char *suffix;
+#ifdef MIMIR
+    unsigned int hv = 0;
+#endif
     assert(c != NULL);
 
     do {
@@ -2874,7 +2877,11 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
                 return;
             }
 
+#ifdef MIMIR
+            it = item_get_savehash(key, nkey, &hv); /* Copy the hv for us */
+#else
             it = item_get(key, nkey);
+#endif
             if (settings.detail_enabled) {
                 stats_prefix_record_get(key, nkey, NULL != it);
             }
@@ -2989,7 +2996,13 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
 		/* MIMIR HACK */
 		/* no clsid is available for the key (since it was a miss), so we use 0 */
 #ifdef MIMIR
-                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey); 
+ #ifdef MIMIR_BACKGROUND_THREAD
+                mimir_enqueue (MIMIR_TYPE_MISS, 0, hv); 
+//                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey); 
+ #else
+		/* This appears faster than actually writing it to a queue in memory! */
+                statistics_miss (0, hv); 
+ #endif
 #endif
             }
 
@@ -4817,6 +4830,9 @@ static void usage(void) {
            "                default is 100.\n"
            "              - lru_crawler_tocrawl: Max items to crawl per slab per run\n"
            "                default is 0 (unlimited)\n"
+#ifdef MIMIR
+           "-Z <bins>     MIMIR HACK. Number of bins to use (default 8)"
+#endif
            );
     return;
 }
@@ -5001,6 +5017,7 @@ static int enable_large_pages(void) {
 #endif
 }
 
+
 /**
  * Do basic sanity check of the runtime environment
  * @return true if no errors found, false if we can't use this env
@@ -5039,6 +5056,9 @@ int main (int argc, char **argv) {
     int retval = EXIT_SUCCESS;
     /* listening sockets */
     static int *l_socket = NULL;
+#ifdef MIMIR
+    int mimir_buckets = 8;
+#endif
 
     /* udp socket */
     static int *u_socket = NULL;
@@ -5118,6 +5138,9 @@ int main (int argc, char **argv) {
           "S"   /* Sasl ON */
           "F"   /* Disable flush_all */
           "o:"  /* Extended generic options */
+#ifdef MIMIR
+          "Z:" /* Number of bins */
+#endif
         ))) {
         switch (c) {
         case 'A':
@@ -5398,6 +5421,11 @@ int main (int argc, char **argv) {
 
             }
             break;
+#ifdef MIMIR
+        case 'Z':
+           mimir_buckets = atoi(optarg);
+           break;
+#endif
         default:
             fprintf(stderr, "Illegal argument \"%c\"\n", c);
             return 1;
@@ -5559,8 +5587,15 @@ int main (int argc, char **argv) {
 
     /* MIMIR hack: initialize thread */
 #ifdef MIMIR
+    statistics_init (mimir_buckets);
+
+ #ifdef MIMIR_BACKGROUND_THREAD
+    fprintf (stderr, "Starting background thread...\n");
     if (start_mimir_thread() < 0)
        exit(EXIT_FAILURE);
+ #else
+    fprintf (stderr, "Background thread disabled, using direct API calls.\n");
+ #endif
 #endif
 
     /* initialise clock event */

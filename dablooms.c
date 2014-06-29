@@ -112,6 +112,7 @@ bitmap_t *new_bitmap(int fd, size_t bytes)
 int bitmap_increment(bitmap_t *bitmap, unsigned int index, long offset)
 {
     long access = index / 2 + offset;
+    static int warned = 0;
     uint8_t temp;
     uint8_t newn, n = bitmap->array[access];
     if (index % 2 != 0) {
@@ -123,7 +124,8 @@ int bitmap_increment(bitmap_t *bitmap, unsigned int index, long offset)
     }
 
     if (temp == 0x0f) {
-        fprintf(stderr, "Error, 4 bit int Overflow\n");
+        if (!warned++)
+		fprintf(stderr, "Error, 4 bit int Overflow\n");
         return -1;
     }
 

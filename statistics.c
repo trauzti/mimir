@@ -33,6 +33,8 @@ counting_bloom_t **cfs;
 unsigned int *cfcounters;
 int perfilter, ghostlistcapacity;
 
+
+
 int get_thread_id() {
   int tid = 0;
   pthread_t currid = pthread_self();
@@ -59,6 +61,8 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 void statistics_init(int numbuckets) {
 #if USE_ROUNDER
   B = numbuckets;
+  printf ("MIMIR loading with %d buckets\n", numbuckets);
+  
   printf("sizeof(item)=%d\n", (int) sizeof(item));
   failures = 0;
   buckets = (unsigned int **) calloc(POWER_LARGEST, sizeof(unsigned int *));
@@ -87,7 +91,8 @@ void statistics_init(int numbuckets) {
   int cfid = 0;
   for(; cfid < 3; cfid++) {
     char fname[128];
-    sprintf(fname, "cf%d.cf", cfid);
+    /* Use shared memory instead of disk for speed */
+    sprintf(fname, "/dev/shm/mimir-cf%d.cf", cfid);
     cfs[cfid] = new_counting_bloom(perfilter, FPP_RATE, fname);
   }
   int tid = 0;
@@ -229,6 +234,7 @@ void statistics_hit(int clsid, item *e) {
   // we only track the tail and calculate the head if we need it
   int head = add_to_head(clsid);
   e->activity = head;
+
 #endif
 }
 
@@ -270,8 +276,10 @@ void statistics_miss(unsigned int clsid, unsigned int hv) {
      newghosthits += 1.0 * (1.0 - FPP_RATE) * prob_in_bounds;
   } else {
     //printf("found nowhere :/\n");
+    // XXX: (YV) Should we not just return? Clearly this item was not in our ghostlist
+    return;
   }
-  __sync_bool_compare_and_swap(&ghosthits, oldghosthits, newghosthits);
+  __sync_bool_compare_and_swap((unsigned int *)&ghosthits, (unsigned int)oldghosthits, (unsigned int)newghosthits);
     // if failed just continue
   //TODO: update the start and end indices
   ghostplus[tid][0] = ghosthits;
@@ -310,7 +318,7 @@ void rotateFilters(void) {
 
 void statistics_evict(unsigned int clsid, unsigned hv) {
 #if USE_GHOSTLIST
-  //int tid = get_thread_id();
+  int tid = get_thread_id();
   //char *key = ITEM_key(e);
   //int nkey = e->nkey;
   //printf("evict(%s)\n", key);
@@ -328,7 +336,7 @@ void statistics_evict(unsigned int clsid, unsigned hv) {
 #endif
 
 #if USE_ROUNDER
-// XXX MIMIR (YV): I removed the following code. I suspect it's important. Can you double check?
+// XXX MIMIR (YV): I removed the following code since we didn't have the item 'e' available. I suspect it's important. Can you double check?
   /*
   int last = stails[clsid];
   if (e->activity < last) {
@@ -442,7 +450,6 @@ static void *mimir_thread(void *arg)
 
 	pthread_detach (mimir_thread_id);
 
-	/* XXX Detach thread */
 	while (1)
 	{
 		sbuf_remove (&mimir_buffer, &type, &keyhash, &clsid);
@@ -455,7 +462,6 @@ static void *mimir_thread(void *arg)
 			case MIMIR_TYPE_MISS:
 				statistics_miss (clsid, keyhash);
 				break;
-
 
 			default:
 				fprintf (stderr, "ARGH, incorrect type %u received on mimir thread.\n", type);
@@ -470,7 +476,7 @@ int start_mimir_thread(void)
 {
 	int ret;
 
-	sbuf_init (&mimir_buffer, 16384);
+	sbuf_init (&mimir_buffer, 128*3);
 
 	if ( (ret = pthread_create(&mimir_thread_id, NULL, mimir_thread, NULL)) != 0)
 	{
@@ -490,14 +496,14 @@ int mimir_enqueue(unsigned int type, unsigned int keyhash, unsigned int clsid)
 }
 
 
-
+/* Enqueue with hash lookup attached */
 int mimir_enqueue_key(unsigned int type, unsigned int clsid, char *key, size_t keylen) 
 {
 	/* Use the 32-bit murmur hash version used by memcached */
 	unsigned int hash = MurmurHash3_x86_32(key, keylen);
 
 	sbuf_insert (&mimir_buffer, type, hash, clsid);
-	return 0; 
+	return 0;
 }
 
 

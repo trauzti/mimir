@@ -13,6 +13,9 @@
 #include <time.h>
 #include <assert.h>
 #include <unistd.h>
+#ifdef MIMIR
+#include "murmur3_hash.h"
+#endif
 
 /* Forward Declarations */
 static void item_link_q(item *it);
@@ -282,9 +285,7 @@ static void item_link_q(item *it) { /* item is the new head */
 
 #ifdef MIMIR
     /* MIMIR HACK */
-#ifdef ACCURATE_PDF
     statistics_set (it->slabs_clsid, it);
-#endif
 #endif
 
     return;
@@ -311,12 +312,15 @@ static void item_unlink_q(item *it) {
     if (it->prev) it->prev->next = it->next;
     sizes[it->slabs_clsid]--;
 
-#ifdef MIMIR
     /* MIMIR HACK */
-#ifdef ACCURATE_PDF
+#ifdef MIMIR
+ #ifdef MIMIR_BACKGROUND_THREAD
     /* Use background thread */
     mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
-#endif
+ #else
+    /* May be faster to just bypass memory */
+    statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey));
+ #endif
 #endif
 
     return;
@@ -390,9 +394,7 @@ void do_item_update(item *it) {
 
 #ifdef MIMIR
     /* MIMIR HACK */
-#ifdef ACCURATE_PDF
     statistics_hit (it->slabs_clsid, it);
-#endif
 #endif
 
     MEMCACHED_ITEM_UPDATE(ITEM_key(it), it->nkey, it->nbytes);

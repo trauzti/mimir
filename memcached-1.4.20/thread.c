@@ -166,6 +166,9 @@ static void wait_for_thread_registration(int nthreads) {
 
 static void register_thread_initialized(void) {
     pthread_mutex_lock(&init_lock);
+#ifdef MIMIR
+    pthread_ids[init_count] = pthread_self();
+#endif
     init_count++;
     pthread_cond_signal(&init_cond);
     pthread_mutex_unlock(&init_lock);
@@ -510,6 +513,17 @@ item *item_get(const char *key, const size_t nkey) {
     return it;
 }
 
+#ifdef MIMIR
+item *item_get_savehash(const char *key, const size_t nkey, uint32_t *hv) {
+    item *it;
+    *hv = hash(key, nkey);
+    item_lock(*hv);
+    it = do_item_get(key, nkey, *hv);
+    item_unlock(*hv);
+    return it;
+}
+#endif
+
 item *item_touch(const char *key, size_t nkey, uint32_t exptime) {
     item *it;
     uint32_t hv;
@@ -822,6 +836,13 @@ void thread_init(int nthreads, struct event_base *main_base) {
         perror("Can't allocate thread descriptors");
         exit(1);
     }
+#ifdef MIMIR
+    pthread_ids = calloc(nthreads, sizeof(pthread_t));
+    if (! pthread_ids) {
+        perror("can't allocate pthread id array");
+        exit(1);
+    }
+#endif
 
     dispatcher_thread.base = main_base;
     dispatcher_thread.thread_id = pthread_self();

@@ -43,7 +43,8 @@ void sbuf_init(sbuf_t *sp, int n)
 		unix_error ("malloc for sbuf calloc");
 	sp->n = n;					   /* Buffer holds max of n items */
 	sp->front = sp->rear = 0;		/* Empty buffer iff front == rear */
-	Sem_init(&sp->mutex, 0, 1);	  /* Binary semaphore for locking */
+	Sem_init(&sp->rearmutex, 0, 1);	  /* Binary semaphore for locking */
+	Sem_init(&sp->frontmutex, 0, 1);	  /* Binary semaphore for locking */
 	Sem_init(&sp->slots, 0, n);	  /* Initially, buf has n empty slots */
 	Sem_init(&sp->items, 0, 0);	  /* Initially, buf has zero data items */
 }
@@ -61,12 +62,17 @@ void sbuf_deinit(sbuf_t *sp)
 /* $begin sbuf_insert */
 void sbuf_insert(sbuf_t *sp, unsigned int type, unsigned int keyhash, unsigned int clsid)
 {
+	/* Writer's time is valuable. If there is no slot, drop the request */
+ 	int val;
+	sem_getvalue (&sp->slots, &val);
+	if (val == 0) /* No slots available */
+		return;
 	P(&sp->slots);						  /* Wait for available slot */
-	P(&sp->mutex);						  /* Lock the buffer */
+	P(&sp->rearmutex);						  /* Lock the buffer */
 	sp->buf[(++sp->rear)%(sp->n)] = type;   /* Insert the type */
 	sp->buf[(++sp->rear)%(sp->n)] = keyhash;   /* Insert the keyhash */
 	sp->buf[(++sp->rear)%(sp->n)] = clsid;   /* Insert the clsid */
-	V(&sp->mutex);						  /* Unlock the buffer */
+	V(&sp->rearmutex);						  /* Unlock the buffer */
 	V(&sp->items);						  /* Announce available keyhash */
 }
 /* $end sbuf_insert */
@@ -76,11 +82,12 @@ void sbuf_insert(sbuf_t *sp, unsigned int type, unsigned int keyhash, unsigned i
 void sbuf_remove(sbuf_t *sp, unsigned int *rettype, unsigned int *retkeyhash, unsigned int *retclsid)
 {
 	P(&sp->items);						  /* Wait for available keyhash */
-	P(&sp->mutex);						  /* Lock the buffer */
+	P(&sp->frontmutex);						  /* Lock the buffer */
 	*rettype    = sp->buf[(++sp->front)%(sp->n)];  /* Remove the type */
+	//*rettype = 1;
 	*retkeyhash = sp->buf[(++sp->front)%(sp->n)];  /* Remove the keyhash */
 	*retclsid   = sp->buf[(++sp->front)%(sp->n)];  /* Remove the keyhash */
-	V(&sp->mutex);						  /* Unlock the buffer */
+	V(&sp->frontmutex);						  /* Unlock the buffer */
 	V(&sp->slots);						  /* Announce available slot */
 	return;
 }

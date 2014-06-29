@@ -3,8 +3,12 @@
 
 
 
-#define USE_GHOSTLIST 0
+#define USE_GHOSTLIST 1
 #define USE_ROUNDER 1
+
+/* Use background thread? */
+//#define MIMIR_BACKGROUND_THREAD
+
 
 #define MIMIR_TYPE_EVICT	1
 #define MIMIR_TYPE_MISS		2

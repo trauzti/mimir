@@ -27,7 +27,7 @@ memcached_mimir_SOURCES += statistics.c statistics.h \
 		    murmur.c murmur.h
 
 memcached_mimir_LDADD = -lm
-memcached_mimir_CFLAGS = @PROFILER_FLAGS@ -DMIMIR -DACCURATE_PDF
+memcached_mimir_CFLAGS = -DMIMIR #-pg
 
 
 if BUILD_CACHE
