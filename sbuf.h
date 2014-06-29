@@ -1,11 +1,11 @@
 #ifndef __SBUF_H__
 #define __SBUF_H__
 
-#include "csapp.h"
-
 #define MIMIR_TYPE_EVICT	1
 #define MIMIR_TYPE_MISS		2
 
+#include <pthread.h>
+#include <semaphore.h>
 
 
 /* $begin sbuft */

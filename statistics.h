@@ -1,7 +1,6 @@
 #ifndef STATISTICS_H
 #define STATISTICS_H
 
-
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -68,7 +67,7 @@ void update_plus(int clsid, int realstart, int realend);
 void update_mapped_plus(int clsid, int start, int end);
 void statistics_hit(int clsid, item *e);
 void statistics_miss(int clsid, const char *key);
-void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey);
+//void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey);
 void statistics_set(int clsid, item *e);
 void statistics_evict(int clsid, item *e);
 void remove_from_bucket(int clsid, int activity);
@@ -77,10 +76,10 @@ interval_t get_stack_distance(int clsid, int activity);
 
 
 /** Background thread **/
-extern static pthread_t mimir_thread_id;
-extern static sbuf_t mimir_buffer;
+extern pthread_t mimir_thread_id;
+extern sbuf_t mimir_buffer;
 
-void start_mimir_thread(void)
+extern void start_mimir_thread(void);
 
 
 #endif

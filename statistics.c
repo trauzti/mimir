@@ -229,7 +229,7 @@ void statistics_hit(int clsid, item *e) {
 
 
 
-void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey) {
+void statistics_miss_specific(int clsid, const char *key, uint32_t hv, int nkey) {
   // TODO: add to concurrent queue and let the background thread do this work
 #if USE_GHOSTLIST
   //printf("miss(%s)\n", key);
@@ -274,7 +274,7 @@ void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey) {
 }
 
 void statistics_miss(int clsid, const char *key) {
- statistics_miss(clsid, key, 0, strlen(key));
+ statistics_miss_specific(clsid, key, 0, strlen(key));
 }
 
 

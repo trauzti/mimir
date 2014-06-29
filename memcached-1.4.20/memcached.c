@@ -74,6 +74,10 @@ static enum try_read_result try_read_udp(conn *c);
 
 static void conn_set_state(conn *c, enum conn_states state);
 
+/* MIMIR */
+extern void start_mimir_thread(void);
+
+
 /* stats */
 static void stats_init(void);
 static void server_stats(ADD_STAT add_stats, conn *c);

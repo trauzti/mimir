@@ -1,12 +1,32 @@
 /* $begin sbufc */
-#include "csapp.h"
+//#include "csapp.h"
 #include "sbuf.h"
+
+void Sem_init(sem_t *sem, int pshared, unsigned int value)
+{
+    if (sem_init(sem, pshared, value) < 0)
+        unix_error("Sem_init error");
+}
+
+void P(sem_t *sem)
+{
+    if (sem_wait(sem) < 0)
+        unix_error("P error");
+}
+
+void V(sem_t *sem)
+{
+    if (sem_post(sem) < 0)
+        unix_error("V error");
+}
+
 
 /* Create an empty, bounded, shared FIFO buffer with n slots */
 /* $begin sbuf_init */
 void sbuf_init(sbuf_t *sp, int n)
 {
-	sp->buf = (unsigned int *)Calloc(n, sizeof(int)*3); 
+	sp->buf = (unsigned int *)calloc(n, sizeof(int)*3); 
+	assert (sp->buf != NULL);
 	sp->n = n;					   /* Buffer holds max of n items */
 	sp->front = sp->rear = 0;		/* Empty buffer iff front == rear */
 	Sem_init(&sp->mutex, 0, 1);	  /* Binary semaphore for locking */
@@ -19,7 +39,7 @@ void sbuf_init(sbuf_t *sp, int n)
 /* $begin sbuf_deinit */
 void sbuf_deinit(sbuf_t *sp)
 {
-	Free(sp->buf);
+	free(sp->buf);
 }
 /* $end sbuf_deinit */
 
