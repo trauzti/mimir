@@ -199,7 +199,7 @@ int bitmap_flush(bitmap_t *bitmap)
 void dablooms_hash_func_with_hv(counting_bloom_t *bloom, uint32_t hv, uint32_t *hashes)
 {
     int i;
-    uint32_t checksum[4];
+    //uint32_t checksum[4];
 
     //MurmurHash3_x64_128(key, key_len, SALT_CONSTANT, checksum);
     //MurmurHash3_x64_128(key, key_len, SALT_CONSTANT, checksum);

@@ -277,6 +277,12 @@ static void item_link_q(item *it) { /* item is the new head */
     *head = it;
     if (*tail == 0) *tail = it;
     sizes[it->slabs_clsid]++;
+
+    /* MIMIR HACK */
+#ifdef ACCURATE_PDF
+    statistics_set (it->slabs_clsid, it);
+#endif
+
     return;
 }
 
@@ -300,6 +306,15 @@ static void item_unlink_q(item *it) {
     if (it->next) it->next->prev = it->prev;
     if (it->prev) it->prev->next = it->next;
     sizes[it->slabs_clsid]--;
+
+    /* MIMIR HACK */
+#ifdef ACCURATE_PDF
+    /* Use background thread */
+    mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
+#endif
+
+
+
     return;
 }
 
@@ -368,6 +383,12 @@ void do_item_remove(item *it) {
 }
 
 void do_item_update(item *it) {
+
+    /* MIMIR HACK */
+#ifdef ACCURATE_PDF
+    statistics_hit (it->slabs_clsid, it);
+#endif
+
     MEMCACHED_ITEM_UPDATE(ITEM_key(it), it->nkey, it->nbytes);
     if (it->time < current_time - ITEM_UPDATE_INTERVAL) {
         assert((it->it_flags & ITEM_SLABBED) == 0);

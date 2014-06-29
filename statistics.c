@@ -1,9 +1,15 @@
-#include "statistics.h"
-
 #include <assert.h>
 #include <math.h>
 #include <string.h>
 #include <pthread.h>
+
+#include "memcached.h"
+#include "dablooms.h"
+#include "sbuf.h"
+#include "statistics_proto.h"
+#include "murmur3_hash.h"
+
+
 
 
 // set 0 for the last bucket and make it first
@@ -228,8 +234,8 @@ void statistics_hit(int clsid, item *e) {
 
 
 
-void statistics_miss_specific(int clsid, const char *key, uint32_t hv, int nkey) {
-  // TODO: add to concurrent queue and let the background thread do this work
+void statistics_miss(unsigned int clsid, unsigned int hv) {
+  
 #if USE_GHOSTLIST
   //printf("miss(%s)\n", key);
   int tid = get_thread_id();
@@ -272,10 +278,6 @@ void statistics_miss_specific(int clsid, const char *key, uint32_t hv, int nkey)
 #endif
 }
 
-void statistics_miss(int clsid, const char *key) {
- statistics_miss_specific(clsid, key, 0, strlen(key));
-}
-
 
 void statistics_set(int clsid, item *e) {
   // TODO: add to concurrent queue and let the background thread do this work
@@ -306,12 +308,11 @@ void rotateFilters(void) {
 }
 
 
-void statistics_evict(int clsid, item *e) {
-  // TODO: add to concurrent queue and let the background thread do this work
+void statistics_evict(unsigned int clsid, unsigned hv) {
 #if USE_GHOSTLIST
-  int tid = get_thread_id();
-  char *key = ITEM_key(e);
-  int nkey = e->nkey;
+  //int tid = get_thread_id();
+  //char *key = ITEM_key(e);
+  //int nkey = e->nkey;
   //printf("evict(%s)\n", key);
   // get the hv from somewhere, might have to create it :I
 
@@ -327,12 +328,15 @@ void statistics_evict(int clsid, item *e) {
 #endif
 
 #if USE_ROUNDER
+// XXX MIMIR (YV): I removed the following code. I suspect it's important. Can you double check?
+  /*
   int last = stails[clsid];
   if (e->activity < last) {
     e->activity = last;
   }
 
   remove_from_bucket(clsid, e->activity);
+  */
 #endif
 }
 
@@ -436,6 +440,8 @@ static void *mimir_thread(void *arg)
 {
 	unsigned int type, keyhash, clsid;
 
+	pthread_detach (mimir_thread_id);
+
 	/* XXX Detach thread */
 	while (1)
 	{
@@ -455,6 +461,8 @@ static void *mimir_thread(void *arg)
 				fprintf (stderr, "ARGH, incorrect type %u received on mimir thread.\n", type);
 		}
 	}
+
+	return NULL;
 }
 
 
@@ -473,5 +481,23 @@ int start_mimir_thread(void)
 	return 0;
 }
 
+
+
+int mimir_enqueue(unsigned int type, unsigned int keyhash, unsigned int clsid) 
+{
+	sbuf_insert (&mimir_buffer, type, keyhash, clsid);
+	return 0; 
+}
+
+
+
+int mimir_enqueue_key(unsigned int type, unsigned int clsid, char *key, size_t keylen) 
+{
+	/* Use the 32-bit murmur hash version used by memcached */
+	unsigned int hash = MurmurHash3_x86_32(key, keylen);
+
+	sbuf_insert (&mimir_buffer, type, hash, clsid);
+	return 0; 
+}
 
 

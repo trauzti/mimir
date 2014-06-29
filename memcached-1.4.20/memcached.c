@@ -75,7 +75,7 @@ static enum try_read_result try_read_udp(conn *c);
 static void conn_set_state(conn *c, enum conn_states state);
 
 /* MIMIR */
-extern int start_mimir_thread(void);
+//extern int start_mimir_thread(void);
 
 
 /* stats */
@@ -2322,6 +2322,7 @@ enum store_item_type do_store_item(item *it, int comm, conn *c, const uint32_t h
             pthread_mutex_unlock(&c->thread->stats.mutex);
 
             item_replace(old_it, it, hv);
+
             stored = STORED;
         } else {
             pthread_mutex_lock(&c->thread->stats.mutex);
@@ -2988,6 +2989,10 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
                 c->thread->stats.get_cmds++;
                 pthread_mutex_unlock(&c->thread->stats.mutex);
                 MEMCACHED_COMMAND_GET(c->sfd, key, nkey, -1, 0);
+
+		/* MIMIR HACK */
+		/* no clsid is available for the key (since it was a miss), so we use 0 */
+                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey); 
             }
 
             key_token++;

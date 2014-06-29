@@ -1,9 +1,6 @@
 #ifndef __SBUF_H__
 #define __SBUF_H__
 
-#define MIMIR_TYPE_EVICT	1
-#define MIMIR_TYPE_MISS		2
-
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -20,9 +17,9 @@ typedef struct {
 } sbuf_t;
 /* $end sbuft */
 
-void sbuf_init(sbuf_t *sp, int n);
-void sbuf_deinit(sbuf_t *sp);
-void sbuf_insert(sbuf_t *sp, unsigned int type, unsigned int item, unsigned int clsid);
-void sbuf_remove(sbuf_t *sp, unsigned int *type, unsigned int *item, unsigned int *clsid);
+extern void sbuf_init(sbuf_t *sp, int n);
+extern void sbuf_deinit(sbuf_t *sp);
+extern void sbuf_insert(sbuf_t *sp, unsigned int type, unsigned int item, unsigned int clsid);
+extern void sbuf_remove(sbuf_t *sp, unsigned int *type, unsigned int *item, unsigned int *clsid);
 
 #endif /* __SBUF_H__ */

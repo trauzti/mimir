@@ -1,6 +1,19 @@
 /* $begin sbufc */
 //#include "csapp.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+
 #include "sbuf.h"
+
+void unix_error(char *msg)
+{
+    fprintf(stderr, "%s: %s\n", msg, strerror(errno));
+    exit(0);
+}
+
 
 void Sem_init(sem_t *sem, int pshared, unsigned int value)
 {
@@ -26,7 +39,8 @@ void V(sem_t *sem)
 void sbuf_init(sbuf_t *sp, int n)
 {
 	sp->buf = (unsigned int *)calloc(n, sizeof(int)*3); 
-	assert (sp->buf != NULL);
+        if (sp->buf == NULL)
+		unix_error ("malloc for sbuf calloc");
 	sp->n = n;					   /* Buffer holds max of n items */
 	sp->front = sp->rear = 0;		/* Empty buffer iff front == rear */
 	Sem_init(&sp->mutex, 0, 1);	  /* Binary semaphore for locking */

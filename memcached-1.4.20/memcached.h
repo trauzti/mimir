@@ -23,9 +23,6 @@
 
 #include "sasl_defs.h"
 
-/* MIMIR HACK */
-pthread_t *pthread_ids;
-
 
 /** Maximum length of a key. */
 #define KEY_MAX_LENGTH 250
@@ -544,6 +541,13 @@ static inline int mutex_lock(pthread_mutex_t *mutex)
 #include "trace.h"
 #include "hash.h"
 #include "util.h"
+
+/* MIMIR HACK */
+#include "statistics_proto.h"
+#include "statistics.h"
+pthread_t *pthread_ids;
+
+
 
 /*
  * Functions such as the libevent-related calls that need to do cross-thread
