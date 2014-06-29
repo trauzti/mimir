@@ -319,7 +319,7 @@ static void item_unlink_q(item *it) {
     mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
  #else
     /* May be faster to just bypass memory */
-    statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey));
+    statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
  #endif
 #endif
 

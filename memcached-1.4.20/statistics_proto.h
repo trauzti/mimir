@@ -49,7 +49,7 @@ void update_mapped_plus(int clsid, int start, int end);
 void statistics_hit(int clsid, item *e);
 void statistics_set(int clsid, item *e);
 void statistics_miss(unsigned int clsid, unsigned int hv);
-void statistics_evict(unsigned int clsid, unsigned int hv);
+void statistics_evict(unsigned int clsid, unsigned int hv, item *e);
 void remove_from_bucket(int clsid, int activity);
 int add_to_head(int clsid);
 interval_t get_stack_distance(int clsid, int activity);

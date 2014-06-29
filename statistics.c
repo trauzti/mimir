@@ -316,7 +316,7 @@ void rotateFilters(void) {
 }
 
 
-void statistics_evict(unsigned int clsid, unsigned hv) {
+void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
 #if USE_GHOSTLIST
   int tid = get_thread_id();
   //char *key = ITEM_key(e);
@@ -336,16 +336,15 @@ void statistics_evict(unsigned int clsid, unsigned hv) {
 #endif
 
 #if USE_ROUNDER
-// XXX MIMIR (YV): I removed the following code since we didn't have the item 'e' available. I suspect it's important. Can you double check?
-// (TS) Yes it is important. We have to wrap this function with access to the item
-  /*
-  int last = stails[clsid];
-  if (e->activity < last) {
-    e->activity = last;
-  }
+  if (likely (e != NULL))
+  {
+	  int last = stails[clsid];
+	  if (e->activity < last) {
+	    e->activity = last;
+	  }
 
-  remove_from_bucket(clsid, e->activity);
-  */
+	  remove_from_bucket(clsid, e->activity);
+  }
 #endif
 }
 
@@ -457,7 +456,7 @@ static void *mimir_thread(void *arg)
 		switch (type)
 		{
 			case MIMIR_TYPE_EVICT:
-				statistics_evict (clsid, keyhash);
+				statistics_evict (clsid, keyhash, NULL); // XXX: add support for item parameter
 				break;
 
 			case MIMIR_TYPE_MISS:
