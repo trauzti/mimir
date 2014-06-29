@@ -52,7 +52,7 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 
 void statistics_init(int numbuckets) {
 #if USE_ROUNDER
-  setup_thread_ids();
+//  setup_thread_ids();
   B = numbuckets;
   printf("sizeof(item)=%d\n", (int) sizeof(item));
   failures = 0;
