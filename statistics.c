@@ -62,7 +62,7 @@ void statistics_init(int numbuckets) {
 #if USE_ROUNDER
   B = numbuckets;
   printf ("MIMIR loading with %d buckets\n", numbuckets);
-  
+
   printf("sizeof(item)=%d\n", (int) sizeof(item));
   failures = 0;
   buckets = (unsigned int **) calloc(POWER_LARGEST, sizeof(unsigned int *));
@@ -241,7 +241,7 @@ void statistics_hit(int clsid, item *e) {
 
 
 void statistics_miss(unsigned int clsid, unsigned int hv) {
-  
+
 #if USE_GHOSTLIST
   //printf("miss(%s)\n", key);
   int tid = get_thread_id();
@@ -337,6 +337,7 @@ void statistics_evict(unsigned int clsid, unsigned hv) {
 
 #if USE_ROUNDER
 // XXX MIMIR (YV): I removed the following code since we didn't have the item 'e' available. I suspect it's important. Can you double check?
+// (TS) Yes it is important. We have to wrap this function with access to the item
   /*
   int last = stails[clsid];
   if (e->activity < last) {
@@ -489,15 +490,15 @@ int start_mimir_thread(void)
 
 
 
-int mimir_enqueue(unsigned int type, unsigned int keyhash, unsigned int clsid) 
+int mimir_enqueue(unsigned int type, unsigned int keyhash, unsigned int clsid)
 {
 	sbuf_insert (&mimir_buffer, type, keyhash, clsid);
-	return 0; 
+	return 0;
 }
 
 
 /* Enqueue with hash lookup attached */
-int mimir_enqueue_key(unsigned int type, unsigned int clsid, char *key, size_t keylen) 
+int mimir_enqueue_key(unsigned int type, unsigned int clsid, char *key, size_t keylen)
 {
 	/* Use the 32-bit murmur hash version used by memcached */
 	unsigned int hash = MurmurHash3_x86_32(key, keylen);
