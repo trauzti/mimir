@@ -235,26 +235,26 @@ void statistics_miss_specific(int clsid, const char *key, uint32_t hv, int nkey)
   //printf("miss(%s)\n", key);
   int tid = get_thread_id();
   // for memcached, reuse the hash value from the hash table! done :-)
-  dablooms_hash_func_with_hv(cfs[0], key, nkey, hv, hashes[tid]);
+  dablooms_hash_func_with_hv(cfs[0], hv, hashes[tid]);
 
   float oldghosthits = ghosthits, newghosthits = ghosthits;
   // Check if the first ghostlist contains this key
-  if (counting_bloom_check_with_hash(cfs[HeadFilter % 3], key, nkey, hashes[tid])) {
+  if (counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
     // don't change the counters
     newghosthits += 1.0 * (1.0 - FPP_RATE);
     //printf("found in first, ghosthits= %f!\n", ghosthits);
-  } else if (counting_bloom_check_with_hash(cfs[(HeadFilter + 1) % 3], key, nkey, hashes[tid])) {
+  } else if (counting_bloom_check_with_hash(cfs[(HeadFilter + 1) % 3], hashes[tid])) {
     //cfcounters[(HeadFilter + 1) % 3]--;
     __sync_fetch_and_add(&cfcounters[(HeadFilter + 1) % 3], -1);
     newghosthits += 1.0 * (1.0 - FPP_RATE);
-    counting_bloom_remove_with_hash(cfs[(HeadFilter + 1) % 3], key, nkey, hashes[tid]);
-    counting_bloom_add_with_hash(cfs[HeadFilter % 3], key, nkey, hashes[tid]);
+    counting_bloom_remove_with_hash(cfs[(HeadFilter + 1) % 3], hashes[tid]);
+    counting_bloom_add_with_hash(cfs[HeadFilter % 3], hashes[tid]);
     //printf("found in second, ghosthits=%f!\n", ghosthits);
-  } else if (counting_bloom_check_with_hash(cfs[(HeadFilter + 2) % 3], key, nkey, hashes[tid])) {
+  } else if (counting_bloom_check_with_hash(cfs[(HeadFilter + 2) % 3], hashes[tid])) {
     //cfcounters[(HeadFilter + 2) % 3]--;
     __sync_fetch_and_add(&cfcounters[(HeadFilter + 2) % 3], -1);
-    counting_bloom_remove_with_hash(cfs[(HeadFilter + 2) % 3], key, nkey, hashes[tid]);
-    counting_bloom_add_with_hash(cfs[HeadFilter % 3], key, nkey, hashes[tid]);
+    counting_bloom_remove_with_hash(cfs[(HeadFilter + 2) % 3], hashes[tid]);
+    counting_bloom_add_with_hash(cfs[HeadFilter % 3], hashes[tid]);
     //printf("found in third, ghosthits=%f!\n", ghosthits);
     float prob_in_bounds = 1.0;
     int firsttwo =  cfcounters[HeadFilter % 3] + cfcounters[(HeadFilter + 1) % 3];
@@ -314,12 +314,13 @@ void statistics_evict(int clsid, item *e) {
   char *key = ITEM_key(e);
   int nkey = e->nkey;
   //printf("evict(%s)\n", key);
+  // get the hv
 
-  dablooms_hash_func_with_hv(cfs[HeadFilter % 3], key, nkey, hashes[tid]);
-  if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], key, nkey, hashes[tid])) {
+  dablooms_hash_func_with_hv(cfs[HeadFilter % 3], hv, hashes[tid]);
+  if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
     //cfcounters[HeadFilter % 3]++;
     __sync_fetch_and_add(&cfcounters[HeadFilter % 3], 1);
-    counting_bloom_add_with_hash(cfs[HeadFilter % 3], key, nkey, hashes[tid]); // returns 0
+    counting_bloom_add_with_hash(cfs[HeadFilter % 3], hashes[tid]); // returns 0
   }
   if (cfcounters[HeadFilter % 3] > perfilter) {
     rotateFilters();

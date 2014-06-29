@@ -49,11 +49,11 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate, 
 counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, const char *filename);
 counting_bloom_t *new_counting_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
 int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len);
-int counting_bloom_add_with_hash(counting_bloom_t *bloom, const char *s, size_t len, unsigned int *hashes);
+int counting_bloom_add_with_hash(counting_bloom_t *bloom, size_t len, unsigned int *hashes);
 int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len);
-int counting_bloom_remove_with_hash(counting_bloom_t *bloom, const char *s, size_t len, unsigned int *hashes);
+int counting_bloom_remove_with_hash(counting_bloom_t *bloom, size_t len, unsigned int *hashes);
 int counting_bloom_check(counting_bloom_t *bloom, const char *s, size_t len);
-int counting_bloom_check_with_hash(counting_bloom_t *bloom, const char *s, size_t len, unsigned int *hashes);
+int counting_bloom_check_with_hash(counting_bloom_t *bloom, size_t len, unsigned int *hashes);
 
 typedef struct {
     uint64_t max_id;
