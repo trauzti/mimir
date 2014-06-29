@@ -50,11 +50,13 @@ void item_stats_reset(void) {
 }
 
 
+#ifdef MIMIR
 /* MIMIR HACK */
 unsigned int get_size(int clsid)
 {
 	return sizes[clsid];
 }
+#endif
 
 
 /* Get the next CAS id for a new item. */
@@ -278,9 +280,11 @@ static void item_link_q(item *it) { /* item is the new head */
     if (*tail == 0) *tail = it;
     sizes[it->slabs_clsid]++;
 
+#ifdef MIMIR
     /* MIMIR HACK */
 #ifdef ACCURATE_PDF
     statistics_set (it->slabs_clsid, it);
+#endif
 #endif
 
     return;
@@ -307,13 +311,13 @@ static void item_unlink_q(item *it) {
     if (it->prev) it->prev->next = it->next;
     sizes[it->slabs_clsid]--;
 
+#ifdef MIMIR
     /* MIMIR HACK */
 #ifdef ACCURATE_PDF
     /* Use background thread */
     mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
 #endif
-
-
+#endif
 
     return;
 }
@@ -384,9 +388,11 @@ void do_item_remove(item *it) {
 
 void do_item_update(item *it) {
 
+#ifdef MIMIR
     /* MIMIR HACK */
 #ifdef ACCURATE_PDF
     statistics_hit (it->slabs_clsid, it);
+#endif
 #endif
 
     MEMCACHED_ITEM_UPDATE(ITEM_key(it), it->nkey, it->nbytes);

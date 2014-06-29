@@ -346,7 +346,9 @@ typedef struct _stritem {
     struct _stritem *next;
     struct _stritem *prev;
     struct _stritem *h_next;    /* hash chain next */
+#ifdef MIMIR
     int activity;  /* MIMIR HACK */
+#endif
     rel_time_t      time;       /* least recent access */
     rel_time_t      exptime;    /* expire time */
     int             nbytes;     /* size of data */
@@ -542,10 +544,12 @@ static inline int mutex_lock(pthread_mutex_t *mutex)
 #include "hash.h"
 #include "util.h"
 
+#ifdef MIMIR
 /* MIMIR HACK */
 #include "statistics_proto.h"
 #include "statistics.h"
 pthread_t *pthread_ids;
+#endif
 
 
 

@@ -1,6 +1,6 @@
 bin_PROGRAMS = memcached
 pkginclude_HEADERS = protocol_binary.h
-noinst_PROGRAMS = memcached-debug sizes testapp timedrun
+noinst_PROGRAMS = memcached-mimir memcached-debug sizes testapp timedrun
 
 BUILT_SOURCES=
 
@@ -18,11 +18,16 @@ memcached_SOURCES = memcached.c memcached.h \
                     thread.c daemon.c \
                     stats.c stats.h \
                     util.c util.h \
-                    trace.h cache.h sasl_defs.h \
-                    statistics.c statistics.h \
+                    trace.h cache.h sasl_defs.h 
+
+memcached_mimir_SOURCES = $(memcached_SOURCES)
+memcached_mimir_SOURCES += statistics.c statistics.h \
 		    dablooms.c dablooms.h \
 		    sbuf.c sbuf.h \
 		    murmur.c murmur.h
+
+memcached_mimir_LDADD = -lm
+memcached_mimir_CFLAGS = @PROFILER_FLAGS@ -DMIMIR -DACCURATE_PDF
 
 
 if BUILD_CACHE

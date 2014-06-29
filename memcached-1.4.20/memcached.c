@@ -74,10 +74,6 @@ static enum try_read_result try_read_udp(conn *c);
 
 static void conn_set_state(conn *c, enum conn_states state);
 
-/* MIMIR */
-//extern int start_mimir_thread(void);
-
-
 /* stats */
 static void stats_init(void);
 static void server_stats(ADD_STAT add_stats, conn *c);
@@ -2992,7 +2988,9 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
 
 		/* MIMIR HACK */
 		/* no clsid is available for the key (since it was a miss), so we use 0 */
+#ifdef MIMIR
                 mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey); 
+#endif
             }
 
             key_token++;
@@ -5560,8 +5558,10 @@ int main (int argc, char **argv) {
     init_lru_crawler();
 
     /* MIMIR hack: initialize thread */
+#ifdef MIMIR
     if (start_mimir_thread() < 0)
        exit(EXIT_FAILURE);
+#endif
 
     /* initialise clock event */
     clock_handler(0, 0, 0);
