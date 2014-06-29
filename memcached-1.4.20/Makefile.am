@@ -43,7 +43,7 @@ memcached_CPPFLAGS = -DNDEBUG
 memcached_debug_LDADD = @PROFILER_LDFLAGS@ -lm
 memcached_debug_CFLAGS = @PROFILER_FLAGS@
 
-memcached_LDADD = 
+memcached_LDADD = -lm
 memcached_DEPENDENCIES =
 memcached_debug_DEPENDENCIES =
 CLEANFILES=
