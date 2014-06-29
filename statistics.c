@@ -228,7 +228,7 @@ void statistics_hit(int clsid, item *e) {
 
 
 
-void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey) {
+void statistics_miss_specific(int clsid, const char *key, uint32_t hv, int nkey) {
   // TODO: add to concurrent queue and let the background thread do this work
 #if USE_GHOSTLIST
   //printf("miss(%s)\n", key);
@@ -273,7 +273,7 @@ void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey) {
 }
 
 void statistics_miss(int clsid, const char *key) {
- statistics_miss(clsid, key, 0, strlen(key));
+ statistics_miss_specific(clsid, key, 0, strlen(key));
 }
 
 
@@ -424,3 +424,53 @@ interval_t get_stack_distance(int clsid, int activity) {
   */
   return ret;
 }
+
+
+
+/** Background thread **/
+
+static pthread_t mimir_thread_id;
+static sbuf_t mimir_buffer;
+
+void start_mimir_thread(void)
+{
+	int ret;
+
+	sbuf_init (&mimir_buffer, 16384);
+
+	if ( (ret = pthread_create(&mimir_thread_id, NULL, mimir_thread, NULL)) != 0)
+	{
+		fprintf (stderr, "Can't start MIMIR thread: %s\n", strerror(ret));
+		return -1;
+	}
+
+	return 0;
+}
+
+
+static void *mimir_thread(void *arg)
+{
+	unsigned int type, keyhash, clsid;
+
+	/* XXX Detach thread */
+	while (1)
+	{
+		sbuf_remove (&mimir_buffer, &type, &keyhash, &clsid);
+		switch (type)
+		{
+			case MIMIR_TYPE_EVICT:
+				statistics_evict (clsid, keyhash);
+				break;
+
+			case MIMIR_TYPE_MISS:
+				statistics_miss (clsid, keyhash);
+				break;
+
+
+			default:
+				fprintf (stderr, "ARGH, incorrect type %u received on mimir thread.\n", type);
+		}
+	}
+}
+
+

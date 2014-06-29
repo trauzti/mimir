@@ -23,6 +23,10 @@
 
 #include "sasl_defs.h"
 
+/* MIMIR HACK */
+pthread_t *pthread_ids;
+
+
 /** Maximum length of a key. */
 #define KEY_MAX_LENGTH 250
 
