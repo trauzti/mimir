@@ -196,7 +196,7 @@ int bitmap_flush(bitmap_t *bitmap)
  * See paper by Kirsch, Mitzenmacher [2006]
  * http://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf
  */
-void dablooms_hash_func_with_hv(counting_bloom_t *bloom, const char *key, size_t key_len, uint32_t hv, uint32_t *hashes)
+void dablooms_hash_func_with_hv(counting_bloom_t *bloom, uint32_t hv, uint32_t *hashes)
 {
     int i;
     uint32_t checksum[4];
@@ -277,7 +277,7 @@ counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, c
     cur_bloom->header = (counting_bloom_header_t *)(cur_bloom->bitmap->array);
     return cur_bloom;
 }
-int counting_bloom_add_with_hash(counting_bloom_t *bloom, const char *s, size_t len, unsigned int *hashes)
+int counting_bloom_add_with_hash(counting_bloom_t *bloom, unsigned int *hashes)
 {
     unsigned int index, i, offset;
 
@@ -310,7 +310,7 @@ int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len)
     return 0;
 }
 
-int counting_bloom_remove_with_hash(counting_bloom_t *bloom, const char *s, size_t len, unsigned int *hashes)
+int counting_bloom_remove_with_hash(counting_bloom_t *bloom, unsigned int *hashes)
 {
     unsigned int index, i, offset;
     for (i = 0; i < bloom->nfuncs; i++) {
@@ -341,7 +341,7 @@ int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len)
     return 0;
 }
 
-int counting_bloom_check_with_hash(counting_bloom_t *bloom, const char *s, size_t len, unsigned int *hashes)
+int counting_bloom_check_with_hash(counting_bloom_t *bloom, unsigned int *hashes)
 {
     unsigned int index, i, offset;
     for (i = 0; i < bloom->nfuncs; i++) {
