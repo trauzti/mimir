@@ -21,7 +21,8 @@ memcached_SOURCES = memcached.c memcached.h \
                     trace.h cache.h sasl_defs.h \
                     statistics.c statistics.h \
 		    dablooms.c dablooms.h \
-		    sbuf.c sbuf.h
+		    sbuf.c sbuf.h \
+		    murmur.c murmur.h
 
 
 if BUILD_CACHE
