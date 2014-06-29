@@ -13,3 +13,13 @@ memcached-1.4.15/memcached
 memcached-1.4.15/memcached-debug
 python_memcached/output*
 python_memcached/images*
+memcached-1.4.20/install-sh
+memcached-1.4.20/doc/Makefile.in
+memcached-1.4.20/doc/Makefile
+memcached-1.4.20/depcomp
+memcached-1.4.20/configure
+memcached-1.4.20/config.sub
+memcached-1.4.20/config.guess
+memcached-1.4.20/compile
+memcached-1.4.20/aclocal.m4
+memcached-1.4.20/Makefile.in
