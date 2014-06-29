@@ -35,3 +35,5 @@ int start_item_crawler_thread(void);
 int stop_item_crawler_thread(void);
 int init_lru_crawler(void);
 enum crawler_result_type lru_crawler_crawl(char *slabs);
+
+unsigned int get_size(int clsid);

@@ -429,8 +429,8 @@ interval_t get_stack_distance(int clsid, int activity) {
 
 /** Background thread **/
 
-static pthread_t mimir_thread_id;
-static sbuf_t mimir_buffer;
+pthread_t mimir_thread_id;
+sbuf_t mimir_buffer;
 
 void start_mimir_thread(void)
 {
