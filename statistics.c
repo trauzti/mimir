@@ -52,7 +52,6 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 
 void statistics_init(int numbuckets) {
 #if USE_ROUNDER
-  setup_thread_ids();
   B = numbuckets;
   printf("sizeof(item)=%d\n", (int) sizeof(item));
   failures = 0;
@@ -314,7 +313,7 @@ void statistics_evict(int clsid, item *e) {
   char *key = ITEM_key(e);
   int nkey = e->nkey;
   //printf("evict(%s)\n", key);
-  // get the hv
+  // get the hv from somewhere, might have to create it :I
 
   dablooms_hash_func_with_hv(cfs[HeadFilter % 3], hv, hashes[tid]);
   if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
