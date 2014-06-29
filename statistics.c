@@ -432,22 +432,6 @@ interval_t get_stack_distance(int clsid, int activity) {
 pthread_t mimir_thread_id;
 sbuf_t mimir_buffer;
 
-void start_mimir_thread(void)
-{
-	int ret;
-
-	sbuf_init (&mimir_buffer, 16384);
-
-	if ( (ret = pthread_create(&mimir_thread_id, NULL, mimir_thread, NULL)) != 0)
-	{
-		fprintf (stderr, "Can't start MIMIR thread: %s\n", strerror(ret));
-		return -1;
-	}
-
-	return 0;
-}
-
-
 static void *mimir_thread(void *arg)
 {
 	unsigned int type, keyhash, clsid;
@@ -472,5 +456,22 @@ static void *mimir_thread(void *arg)
 		}
 	}
 }
+
+
+int start_mimir_thread(void)
+{
+	int ret;
+
+	sbuf_init (&mimir_buffer, 16384);
+
+	if ( (ret = pthread_create(&mimir_thread_id, NULL, mimir_thread, NULL)) != 0)
+	{
+		fprintf (stderr, "Can't start MIMIR thread: %s\n", strerror(ret));
+		return -1;
+	}
+
+	return 0;
+}
+
 
 

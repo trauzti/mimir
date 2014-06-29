@@ -75,7 +75,7 @@ static enum try_read_result try_read_udp(conn *c);
 static void conn_set_state(conn *c, enum conn_states state);
 
 /* MIMIR */
-extern void start_mimir_thread(void);
+extern int start_mimir_thread(void);
 
 
 /* stats */
@@ -5555,7 +5555,8 @@ int main (int argc, char **argv) {
     init_lru_crawler();
 
     /* MIMIR hack: initialize thread */
-    start_mimir_thread();
+    if (start_mimir_thread() < 0)
+       exit(EXIT_FAILURE);
 
     /* initialise clock event */
     clock_handler(0, 0, 0);

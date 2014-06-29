@@ -67,6 +67,7 @@ void update_plus(int clsid, int realstart, int realend);
 void update_mapped_plus(int clsid, int start, int end);
 void statistics_hit(int clsid, item *e);
 void statistics_miss(int clsid, const char *key);
+void statistics_miss_specific(int clsid, const char *key, uint32_t hv, int nkey);
 //void statistics_miss(int clsid, const char *key, uint32_t hv, int nkey);
 void statistics_set(int clsid, item *e);
 void statistics_evict(int clsid, item *e);
@@ -79,7 +80,7 @@ interval_t get_stack_distance(int clsid, int activity);
 extern pthread_t mimir_thread_id;
 extern sbuf_t mimir_buffer;
 
-extern void start_mimir_thread(void);
+extern int start_mimir_thread(void);
 
 
 #endif
