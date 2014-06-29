@@ -430,14 +430,13 @@ interval_t get_stack_distance(int clsid, int activity) {
 /** Background thread **/
 
 static pthread_t mimir_thread_id;
-static sbuf_t mimir_evict_buffer;
-static sbuf_t mimir_miss_buffer;
+static sbuf_t mimir_buffer;
 
 void start_mimir_thread(void)
 {
 	int ret;
 
-	sbuf_init(&mimir_buffer, 16384);
+	sbuf_init (&mimir_buffer, 16384);
 
 	if ( (ret = pthread_create(&mimir_thread_id, NULL, mimir_thread, NULL)) != 0)
 	{
@@ -451,13 +450,12 @@ void start_mimir_thread(void)
 
 static void *mimir_thread(void *arg)
 {
-	sbuf_t *sbuf = (sbuf_t *)arg;
 	unsigned int type, keyhash, clsid;
 
 	/* XXX Detach thread */
 	while (1)
 	{
-		sbuf_remove (arg, &type, &keyhash, &clsid);
+		sbuf_remove (&mimir_buffer, &type, &keyhash, &clsid);
 		switch (type)
 		{
 			case MIMIR_TYPE_EVICT:

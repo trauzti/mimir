@@ -8,6 +8,7 @@
 //#include "item.hpp"
 #include "dablooms.h"
 #include "memcached.h"
+#include "sbuf.h"
 
 #define USE_GHOSTLIST 0
 #define USE_ROUNDER 1
@@ -73,5 +74,13 @@ void statistics_evict(int clsid, item *e);
 void remove_from_bucket(int clsid, int activity);
 int add_to_head(int clsid);
 interval_t get_stack_distance(int clsid, int activity);
+
+
+/** Background thread **/
+extern static pthread_t mimir_thread_id;
+extern static sbuf_t mimir_buffer;
+
+void start_mimir_thread(void)
+
 
 #endif

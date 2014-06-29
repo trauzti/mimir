@@ -5550,6 +5550,9 @@ int main (int argc, char **argv) {
     /* Run regardless of initializing it later */
     init_lru_crawler();
 
+    /* MIMIR hack: initialize thread */
+    start_mimir_thread();
+
     /* initialise clock event */
     clock_handler(0, 0, 0);
 
