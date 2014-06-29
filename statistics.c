@@ -424,3 +424,55 @@ interval_t get_stack_distance(int clsid, int activity) {
   */
   return ret;
 }
+
+
+
+/** Background thread **/
+
+static pthread_t mimir_thread_id;
+static sbuf_t mimir_evict_buffer;
+static sbuf_t mimir_miss_buffer;
+
+void start_mimir_thread(void)
+{
+	int ret;
+
+	sbuf_init(&mimir_buffer, 16384);
+
+	if ( (ret = pthread_create(&mimir_thread_id, NULL, mimir_thread, NULL)) != 0)
+	{
+		fprintf (stderr, "Can't start MIMIR thread: %s\n", strerror(ret));
+		return -1;
+	}
+
+	return 0;
+}
+
+
+static void *mimir_thread(void *arg)
+{
+	sbuf_t *sbuf = (sbuf_t *)arg;
+	unsigned int type, keyhash, clsid;
+
+	/* XXX Detach thread */
+	while (1)
+	{
+		sbuf_remove (arg, &type, &keyhash, &clsid);
+		switch (type)
+		{
+			case MIMIR_TYPE_EVICT:
+				statistics_evict (clsid, keyhash);
+				break;
+
+			case MIMIR_TYPE_MISS:
+				statistics_miss (clsid, keyhash);
+				break;
+
+
+			default:
+				fprintf (stderr, "ARGH, incorrect type %u received on mimir thread.\n", type);
+		}
+	}
+}
+
+
