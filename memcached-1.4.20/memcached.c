@@ -2997,11 +2997,11 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
 		/* no clsid is available for the key (since it was a miss), so we use 0 */
 #ifdef MIMIR
  #ifdef MIMIR_BACKGROUND_THREAD
-                mimir_enqueue (MIMIR_TYPE_MISS, 0, hv); 
-//                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey); 
+                mimir_enqueue (MIMIR_TYPE_MISS, 0, hv);
+//                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey);
  #else
 		/* This appears faster than actually writing it to a queue in memory! */
-                statistics_miss (0, hv); 
+                statistics_miss (0, hv);
  #endif
 #endif
             }
@@ -4831,7 +4831,7 @@ static void usage(void) {
            "              - lru_crawler_tocrawl: Max items to crawl per slab per run\n"
            "                default is 0 (unlimited)\n"
 #ifdef MIMIR
-           "-Z <bins>     MIMIR HACK. Number of bins to use (default 8)"
+           "-Z <buckets>     MIMIR HACK. Number of buckets to use (default 8)"
 #endif
            );
     return;
