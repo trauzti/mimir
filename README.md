@@ -24,7 +24,7 @@ It supports the stats hrc command so the memcache-monitor can connect to pymimir
 
 memcached-1.4.15 with statistics
 ======
-This server is just regular memcached-1.4.19 with additional statistics collection
+This server is just regular memcached-1.4.15 with additional statistics collection
 to predict what would happen if the server used less/more memory.
 It supports the stats cdf command
 
