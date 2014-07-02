@@ -456,9 +456,9 @@ struct conn {
     int    msgcurr;   /* element in msglist[] being transmitted now */
     int    msgbytes;  /* number of bytes in current msg */
 
-    item   **ilist;   /* list of items to write out */
+    struct _stritem **ilist;   /* list of items to write out */
     int    isize;
-    item   **icurr;
+    struct _stritem **icurr;
     int    ileft;
 
     char   **suffixlist;

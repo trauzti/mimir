@@ -1,5 +1,5 @@
-CC= g++
-CFLAGS= -O3 -std=c++11 -levent -lpthread -ljemalloc
+CC= g++-4.8
+CFLAGS= -O3 -DMIMIR -Imemcached -std=c++11 -levent -lpthread -ljemalloc
 BINS= syslab_cache test_hashmap test_linkedlist test_avltree
 OBJECTS= hash.o statistics.o lru_linkedlist.o lru_avl.o lru_mattson.o common.o memcached.o rounder.o readqueue.o #socket_server.o
 INCLUDES= 

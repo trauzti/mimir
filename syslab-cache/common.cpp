@@ -1,3 +1,4 @@
+#include "memcached.h"
 #include "common.hpp"
 
 FILE *Fopen(const char *filename, const char *mode) {

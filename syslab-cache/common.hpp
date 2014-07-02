@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <omp.h>
+#include "statistics_proto.h"
 
 #define MIN_BUCKETS 2
 #define MAX_BUCKETS 128

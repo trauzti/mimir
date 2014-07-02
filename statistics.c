@@ -8,6 +8,7 @@
 #include "memcached.h"
 #include "dablooms.h"
 #include "sbuf.h"
+#include "statistics.h"
 #include "statistics_proto.h"
 #include "murmur3_hash.h"
 
