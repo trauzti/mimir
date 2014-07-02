@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "murmur3_hash.h"
 #include "item.hpp"
 #include "rounder.hpp"
 #include "common.hpp"
@@ -29,8 +30,8 @@ void rounder::Hit(item *it, int dist /* =-1 */) {
 void rounder::Miss(const char *key) {
   ++misses;
   ++requests;
-  // calculate hash value 
-  statistics_miss(0, key);
+	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
+  statistics_miss(0, hv);
 }
 
 // set in the cache
@@ -40,7 +41,9 @@ void rounder::Set(item *it) {
 
 // this item was evicted from the main cache
 void rounder::Evict(item *it) {
-  statistics_evict(0, it);
+  const char *key = it->key;
+	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
+  statistics_evict(0, hv, it);
 }
 
 
