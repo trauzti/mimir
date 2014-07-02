@@ -7,6 +7,10 @@
 #include "sbuf.h"
 #include "dablooms.h"
 
+#ifdef __cplusplus
+#include "item.hpp"
+#endif
+
 /* thread and atomic stuff */
 // use: atomically sets the value and mark of a bucket
 bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv);

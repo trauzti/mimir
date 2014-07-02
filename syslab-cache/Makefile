@@ -1,7 +1,7 @@
 CC= g++-4.8
-CFLAGS= -O3 -DMIMIR -Imemcached -std=c++11 -levent -lpthread -ljemalloc
+CFLAGS= -O3 -DMIMIR -std=c++11 -levent -lpthread -ljemalloc -fpermissive
 BINS= syslab_cache test_hashmap test_linkedlist test_avltree
-OBJECTS= murmur3_hash.o hash.o statistics.o lru_linkedlist.o lru_avl.o lru_mattson.o common.o rounder.o readqueue.o #socket_server.o
+OBJECTS= sbuf.o dablooms.o murmur3_hash.o hash.o statistics.o lru_linkedlist.o lru_avl.o lru_mattson.o common.o rounder.o readqueue.o #socket_server.o
 INCLUDES= 
 
 all: clean

@@ -1,5 +1,5 @@
-#ifndef ITEMS_H
-#define ITEMS_H
+#ifndef MEMCACHED_ORIG_H
+#define MEMCACHED_ORIG_H
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -29,5 +29,8 @@ typedef enum
 
 void setup_thread_ids();
 int get_size(int clsid);
+
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
 
 #endif 

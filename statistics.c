@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "memcached.h"
+#include "memcached-orig.h"
 #include "dablooms.h"
 #include "sbuf.h"
 #include "statistics.h"

@@ -23,3 +23,5 @@ memcached-1.4.20/config.guess
 memcached-1.4.20/compile
 memcached-1.4.20/aclocal.m4
 memcached-1.4.20/Makefile.in
+memcached-1.4.20/missing
+memcached-1.4.20/config.h.in
