@@ -377,6 +377,7 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
     memset (cfs_global->bitmap->array, 0, cfs_global->bitmap->bytes);
   }
 #endif 
+#endif
 
 
   if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
@@ -387,7 +388,6 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
   if (cfcounters[HeadFilter % 3] > perfilter) {
     rotateFilters();
   }
-#endif
 
 #if USE_ROUNDER
   if (likely (e != NULL))
