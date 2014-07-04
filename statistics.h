@@ -5,6 +5,7 @@
 
 #define USE_GHOSTLIST 1
 #define USE_ROUNDER 1
+// #define USE_GLOBAL_FILTER
 
 /* Use background thread? */
 //#define MIMIR_BACKGROUND_THREAD

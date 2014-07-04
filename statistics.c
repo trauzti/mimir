@@ -5,13 +5,19 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "memcached-orig.h"
+#ifdef SYSLAB_CACHE
+# include "memcached-orig.h"
+#else
+# include "memcached.h"
+#endif
 #include "dablooms.h"
 #include "sbuf.h"
 #include "statistics.h"
 #include "statistics_proto.h"
 #include "murmur3_hash.h"
 
+
+#define FPP_RATE 0.05 // XXX: YMIR I just changed this in hope of getting more performance (at the cost of accuracy)
 
 
 
@@ -21,24 +27,40 @@
 // last, last+1 , ... , head
 // tailbucket, tailbucket+1, ..... , firstbucket
 
-#define FPP_RATE 0.01
+typedef struct _classstats {
+	int stail;
+	unsigned int *buckets;
+	float *plus;
+	//float *ghostplus;
+} classstats;
+
+classstats *classes;
+
 int failures;
 int HeadFilter;
 int B; // number of buckets
+/*
 int *stails; // tail values, need to use % B to get the bucket index
 unsigned int **buckets; // buckets[POWER_LARGEST][8];
 float **plus; // plus[POWER_LARGEST][101];
 float **ghostplus; // plus[POWER_LARGEST][101];
+*/
 uint32_t **hashes;
-float ghosthits;
-
+#if USE_GLOBAL_FILTER
+counting_bloom_t *cfs_global;
+unsigned int cfs_global_counter;
+#endif
 counting_bloom_t **cfs;
+float ghosthits;
 unsigned int *cfcounters;
 int perfilter, ghostlistcapacity;
 
 
 
 int get_thread_id() {
+#ifdef SYSLAB_CACHE
+  return 0; /* one thread */
+#else
   int tid = 0;
   pthread_t currid = pthread_self();
   for (; tid < settings.num_threads; tid++) {
@@ -52,6 +74,7 @@ int get_thread_id() {
   }
   */
   return tid;
+#endif
 }
 
 bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
@@ -63,21 +86,20 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 
 void statistics_init(int numbuckets) {
 #if USE_ROUNDER
+  classstats *cs;
   B = numbuckets;
   printf ("MIMIR loading with %d buckets\n", numbuckets);
 
   printf("sizeof(item)=%d\n", (int) sizeof(item));
   failures = 0;
-  buckets = (unsigned int **) calloc(POWER_LARGEST, sizeof(unsigned int *));
-  stails = (int *) calloc(POWER_LARGEST, sizeof(int));
-  plus = (float **) calloc(POWER_LARGEST, sizeof( float *));
-  ghostplus = (float **) calloc(POWER_LARGEST, sizeof( float *));
+  classes = (classstats *) calloc(POWER_LARGEST, sizeof(classstats));
   int clsid;
   for (clsid = 0; clsid < POWER_LARGEST; clsid++) {
-    buckets[clsid] = (unsigned int *)calloc(B, sizeof(unsigned int));
-    stails[clsid] = 0;
-    plus[clsid] = (float *) calloc(101, sizeof( float )); // so update_plus can decrement plus[100]
-    ghostplus[clsid] = (float *) calloc(101, sizeof( float ));
+    cs = &classes[clsid];
+    cs->stail = 0;
+    cs->buckets = (unsigned int *)calloc(B, sizeof(unsigned int));
+    cs->plus = (float *) calloc(101, sizeof( float )); // so update_plus can decrement plus[100]
+    //cs->ghostplus = (float *) calloc(101, sizeof( float )); // NEVER USED
   }
 #endif
 #if USE_GHOSTLIST
@@ -91,6 +113,10 @@ void statistics_init(int numbuckets) {
   perfilter = ghostlistcapacity / 2;
   printf("ghostlistcapacity=%d\n", ghostlistcapacity);
   printf("perfilter=%d\n", perfilter);
+#if USE_GLOBAL_FILTER
+  cfs_global = new_counting_bloom(perfilter, FPP_RATE, "/dev/shm/mimir-cfs-global.cf");
+  cfs_global_counter = 0;
+#endif
   int cfid = 0;
   for(; cfid < 3; cfid++) {
     char fname[128];
@@ -109,6 +135,7 @@ void statistics_init(int numbuckets) {
 
 void statistics_terminate() {
 #if USE_ROUNDER
+/* XXX: TO DO 
   int clsid;
   free(stails);
   free(buckets);
@@ -117,29 +144,31 @@ void statistics_terminate() {
   for (clsid = 0; clsid < POWER_LARGEST; clsid++) {
     free(buckets[clsid]);
   }
+*/
 #endif
 }
 
 
 // er mark breytt einhvers stadar?
 bool age_if_full(int clsid) {
-  int last = stails[clsid] % B;
-  int head = (stails[clsid] + B - 1) % B;
-  unsigned int head_count = GET_count(buckets[clsid][head]);
-  unsigned int last_count = GET_count(buckets[clsid][last]);
+  classstats *cs = &classes[clsid];
+  int last = cs->stail % B;
+  int head = (cs->stail + B - 1) % B;
+  unsigned int head_count = GET_count(cs->buckets[head]);
+  unsigned int last_count = GET_count(cs->buckets[last]);
   while (head_count >= (int) (get_size(clsid) / (B +0.0))) {
     int k = (last + 1) % B;
-    unsigned int oldcm = buckets[clsid][k];
+    unsigned int oldcm = cs->buckets[k];
     // when is the mark for the last+1 bucket cleared
     // no thread will execute this loop more than once
     // this is lock free => no thread will be stuck here for an indefinite amount of time
     while (!GET_mark(oldcm)) {
       unsigned int newcm = GET_count_and_mark(GET_count(oldcm) + last_count, 1);
-      if (atomic_set_and_mark(&buckets[clsid][k], oldcm, newcm)) {
-        buckets[clsid][last] = 0x0; // set both the value and the mark to 0
-        ++stails[clsid];
+      if (atomic_set_and_mark(&cs->buckets[k], oldcm, newcm)) {
+        cs->buckets[last] = 0x0; // set both the value and the mark to 0
+        ++cs->stail;
       }
-      oldcm = buckets[clsid][k]; // other threads will find that mark is 1 and exit
+      oldcm = cs->buckets[k]; // other threads will find that mark is 1 and exit
       // only one thread will be able to increment the tail
     }
     return true;
@@ -196,7 +225,6 @@ void update_mapped_plus(int clsid, int start, int end) {
     end = 100;
     ++failures;
   }
-  int tid = get_thread_id();
 
   // todo use an array for each thread
 
@@ -209,8 +237,10 @@ void update_mapped_plus(int clsid, int start, int end) {
   //plus[clsid][end] -= val;
 
   // just to check if the threads are the bottleneck
-  plus[tid][start] += val;
-  plus[tid][end] -= val;
+  // XXX YV: removed the 'tid' index to the plus array. threads may become a bottleneck again
+  //int tid = get_thread_id();
+  classes[clsid].plus[start] += val;
+  classes[clsid].plus[end] -= val;
 
   // equivalent to:
   // for (int i = start; i < end; i++) {
@@ -222,9 +252,10 @@ void update_mapped_plus(int clsid, int start, int end) {
 void statistics_hit(int clsid, item *e) {
   // TODO: add to concurrent queue and let the background thread do this work
 #if USE_ROUNDER
+  classstats *cs = &classes[clsid];
   age_if_full(clsid);
 
-  int last = stails[clsid];
+  int last = cs->stail;
   if (e->activity < last) {
     e-> activity = last;
   }
@@ -244,12 +275,17 @@ void statistics_hit(int clsid, item *e) {
 
 
 void statistics_miss(unsigned int clsid, unsigned int hv) {
-
 #if USE_GHOSTLIST
   //printf("miss(%s)\n", key);
   int tid = get_thread_id();
   // for memcached, reuse the hash value from the hash table! done :-)
   dablooms_hash_func_with_hv(cfs[0], hv, hashes[tid]);
+
+#if USE_GLOBAL_FILTER
+  // First see if the element is even in the ghost filter
+  if (!counting_bloom_check_with_hash(cfs_global, hashes[tid]))
+     return; // Stop early
+#endif
 
   float oldghosthits = ghosthits, newghosthits = ghosthits;
   // Check if the first ghostlist contains this key
@@ -285,7 +321,7 @@ void statistics_miss(unsigned int clsid, unsigned int hv) {
   __sync_bool_compare_and_swap((unsigned int *)&ghosthits, (unsigned int)oldghosthits, (unsigned int)newghosthits);
     // if failed just continue
   //TODO: update the start and end indices
-  ghostplus[tid][0] = ghosthits;
+  //ghostplus[tid][0] = ghosthits; // NEVER USED 
 #endif
 }
 
@@ -295,7 +331,7 @@ void statistics_set(int clsid, item *e) {
 #if USE_ROUNDER
   age_if_full(clsid);
 
-  int last = stails[clsid];
+  int last = classes[clsid].stail;
   if (e->activity < last) {
     e->activity = last;
   }
@@ -328,6 +364,21 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
   // get the hv from somewhere, might have to create it :I
 
   dablooms_hash_func_with_hv(cfs[HeadFilter % 3], hv, hashes[tid]);
+
+#if USE_GLOBAL_FILTER
+  // Assume capacity and FPP rate of cfs_global is equal to cfs[i] 
+  if (!counting_bloom_check_with_hash(cfs_global, hashes[tid])) {
+    __sync_fetch_and_add(&cfs_global_counter, 1);
+    counting_bloom_add_with_hash(cfs_global, hashes[tid]); // returns 0
+  }
+  if (cfs_global_counter > perfilter) {
+    // Clean the filter
+    cfs_global_counter = 0;
+    memset (cfs_global->bitmap->array, 0, cfs_global->bitmap->bytes);
+  }
+#endif 
+
+
   if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
     //cfcounters[HeadFilter % 3]++;
     __sync_fetch_and_add(&cfcounters[HeadFilter % 3], 1);
@@ -341,7 +392,7 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
 #if USE_ROUNDER
   if (likely (e != NULL))
   {
-	  int last = stails[clsid];
+	  int last = classes[clsid].stail;
 	  if (e->activity < last) {
 	    e->activity = last;
 	  }
@@ -357,7 +408,7 @@ void remove_from_bucket(int clsid, int activity) {
   int i, last; // bucket index
   unsigned int oldcm, newcm;
   while (1) {
-    last = stails[clsid];
+    last = classes[clsid].stail;
 
     if (activity < last) {
       i = last % B;
@@ -365,27 +416,28 @@ void remove_from_bucket(int clsid, int activity) {
       i = activity % B;
     }
 
-    oldcm = buckets[clsid][i];
+    oldcm = classes[clsid].buckets[i];
     newcm = GET_count_and_mark(GET_count(oldcm) - 1, GET_mark(oldcm));
-    if (atomic_set_and_mark(&buckets[clsid][i], oldcm, newcm)) {
+    if (atomic_set_and_mark(&classes[clsid].buckets[i], oldcm, newcm)) {
       return;
     }
   }
 }
 
 
-// incremenets the bucket counter for head
+// increments the bucket counter for head
 int add_to_head(int clsid) {
+  classstats *cs = &classes[clsid];
   int head;
   unsigned int oldcm, newcm;
   while (1) {
-    head = stails[clsid] + B - 1;
-    oldcm = buckets[clsid][head % B];
+    head = cs->stail + B - 1;
+    oldcm = cs->buckets[head % B];
     newcm = GET_count_and_mark(GET_count(oldcm) + 1, GET_mark(oldcm)); // isn't the mark always 0 for the head bucket?
 
     // the head value could be incremented in the meantime
     // then we need to try again
-    if (atomic_set_and_mark(&buckets[clsid][head % B], oldcm, newcm)) {
+    if (atomic_set_and_mark(&cs->buckets[head % B], oldcm, newcm)) {
       return head;
     }
   }
@@ -393,6 +445,7 @@ int add_to_head(int clsid) {
 
 
 interval_t get_stack_distance(int clsid, int activity) {
+  classstats *cs = &classes[clsid];
   interval_t ret;
   ret.start = 0;
   ret.end = 0;
@@ -400,14 +453,14 @@ interval_t get_stack_distance(int clsid, int activity) {
   int sz = get_size(clsid);
 
   unsigned int cm;
-  int head  = stails[clsid] + B - 1;
+  int head  = cs->stail + B - 1;
   // we could get aging in the meantime. therefore we used an intermediate bucket
   // for now we just reset the values
-  int last  = stails[clsid];
+  int last  = cs->stail;
   int i = head;
   int cnt, marked;
   while (1) {
-    cm = buckets[clsid][i % B];
+    cm = cs->buckets[i % B];
     cnt = ((int) GET_count(cm) );
     marked = GET_mark(cm);
     assert (cnt >= 0) ;
