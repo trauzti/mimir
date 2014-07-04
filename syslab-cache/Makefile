@@ -1,10 +1,11 @@
 CC= g++-4.8
-CFLAGS= -O3 -DMIMIR -std=c++11 -levent -lpthread -ljemalloc -fpermissive
+CFLAGS= -O3 -DMIMIR -std=c++11 
+LFLAGS= -levent -lpthread -ljemalloc -fpermissive
 BINS= syslab_cache test_hashmap test_linkedlist test_avltree
 OBJECTS= sbuf.o dablooms.o murmur3_hash.o hash.o statistics.o lru_linkedlist.o lru_avl.o lru_mattson.o common.o rounder.o readqueue.o #socket_server.o
 INCLUDES= 
 
-all: clean
+#all: clean
 all: $(BINS)
 
 debug: CFLAGS += -ggdb3 -pg
@@ -13,19 +14,6 @@ debug: all
 
 fast: CFLAGS += -DNDEBUG 
 fast: all
-
-
-syslab_cache: $(OBJECTS) 
-	$(CC) $(CFLAGS) $(INCLUDES) syslab_cache.cpp $(OBJECTS) -o $@
-
-test_hashmap: common.o hash.o
-	$(CC) $(CFLAGS) $(INCLUDES) test_hashmap.cpp common.o hash.o -o $@
-
-test_linkedlist: $(OBJECTS)
-	$(CC) $(CFLAGS) $(INCLUDES) test_linkedlist.cpp $(OBJECTS) -o $@
-
-test_avltree: $(OBJECTS)
-	$(CC) $(CFLAGS) $(INCLUDES) test_avltree.cpp $(OBJECTS) -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES)  -c -o $@ $<
@@ -36,6 +24,19 @@ test_avltree: $(OBJECTS)
 %.o: %.cpp
 	$(CC) $(CFLAGS) $(INCLUDES)  -c -o $@ $<
 
+
+
+syslab_cache: $(OBJECTS) 
+	$(CC) $(CFLAGS) $(INCLUDES) syslab_cache.cpp $(OBJECTS) -o $@ $(LFLAGS)
+
+test_hashmap: common.o hash.o
+	$(CC) $(CFLAGS) $(INCLUDES) test_hashmap.cpp common.o hash.o -o $@ $(LFLAGS)
+
+test_linkedlist: $(OBJECTS)
+	$(CC) $(CFLAGS) $(INCLUDES) test_linkedlist.cpp $(OBJECTS) -o $@ $(LFLAGS)
+
+test_avltree: $(OBJECTS)
+	$(CC) $(CFLAGS) $(INCLUDES) test_avltree.cpp $(OBJECTS) -o $@ $(LFLAGS)
 
 
 style:

@@ -1,6 +1,8 @@
 /* Copyright @2012 by Justin Hines at Bitly under a very liberal license. See LICENSE in the source distribution. */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -57,7 +59,7 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
     /* resize if mmap exists and possible on this os, else new mmap */
     if (bitmap->array != NULL) {
 #if __linux
-        bitmap->array = mremap(bitmap->array, old_size, new_size, MREMAP_MAYMOVE);
+        bitmap->array = (char *)mremap(bitmap->array, old_size, new_size, MREMAP_MAYMOVE);
         if (bitmap->array == MAP_FAILED) {
             perror("Error resizing mmap");
             free_bitmap(bitmap);
@@ -75,7 +77,7 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
 #endif
     }
     if (bitmap->array == NULL) {
-        bitmap->array = mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        bitmap->array = (char *)mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         if (bitmap->array == MAP_FAILED) {
             perror("Error init mmap");
             free_bitmap(bitmap);
@@ -245,7 +247,7 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate, 
 {
     counting_bloom_t *bloom;
 
-    if ((bloom = malloc(sizeof(counting_bloom_t))) == NULL) {
+    if ((bloom = (counting_bloom_t *)malloc(sizeof(counting_bloom_t))) == NULL) {
         fprintf(stderr, "Error, could not realloc a new bloom filter\n");
         return NULL;
     }
@@ -258,7 +260,7 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate, 
     bloom->size = bloom->nfuncs * bloom->counts_per_func;
     /* rounding-up integer divide by 2 of bloom->size */
     bloom->num_bytes = ((bloom->size + 1) / 2) + sizeof(counting_bloom_header_t);
-    bloom->hashes = calloc(bloom->nfuncs, sizeof(uint32_t));
+    bloom->hashes = (uint32_t *)calloc(bloom->nfuncs, sizeof(uint32_t));
 
     return bloom;
 }
@@ -398,7 +400,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom)
 
     error_rate = bloom->error_rate * (pow(ERROR_TIGHTENING_RATIO, bloom->num_blooms + 1));
 
-    if ((bloom->blooms = realloc(bloom->blooms, (bloom->num_blooms + 1) * sizeof(counting_bloom_t *))) == NULL) {
+    if ((bloom->blooms = (counting_bloom_t **)realloc(bloom->blooms, (bloom->num_blooms + 1) * sizeof(counting_bloom_t *))) == NULL) {
         fprintf(stderr, "Error, could not realloc a new bloom filter\n");
         return NULL;
     }
@@ -566,7 +568,7 @@ scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, co
 {
     scaling_bloom_t *bloom;
 
-    if ((bloom = malloc(sizeof(scaling_bloom_t))) == NULL) {
+    if ((bloom = (scaling_bloom_t *)malloc(sizeof(scaling_bloom_t))) == NULL) {
         return NULL;
     }
     if ((bloom->bitmap = new_bitmap(fd, sizeof(scaling_bloom_header_t))) == NULL) {

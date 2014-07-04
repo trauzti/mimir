@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <getopt.h>
+#include <time.h>
 #include <string>
 
 #include "syslab_cache.hpp"
