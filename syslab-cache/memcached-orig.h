@@ -9,7 +9,7 @@
 
 #define ITEM_key(it) (it->key)
 
-struct settings {
+/*struct settings {
   int num_threads;
   int chunk_size;
   int maxbytes;
@@ -17,6 +17,8 @@ struct settings {
 
 // initialized elsewhere
 extern struct settings settings;
+*/
+
 extern pthread_t *pthread_ids;
 
 #ifndef __cplusplus
@@ -28,7 +30,7 @@ typedef enum
 #endif
 
 void setup_thread_ids();
-int get_size(int clsid);
+//int get_size(int clsid);
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)

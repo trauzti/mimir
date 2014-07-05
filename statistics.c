@@ -17,6 +17,24 @@
 #include "murmur3_hash.h"
 
 
+#ifdef SYSLAB_CACHE
+const int get_size(int clsid) {
+	return 1024;
+}
+
+struct {
+	int num_threads;
+	int maxbytes;
+	int chunk_size;
+} settings = { 
+	.num_threads = 1, 
+	.maxbytes = 1024*1024,
+	.chunk_size = 1024
+};
+
+#endif
+
+
 #define FPP_RATE 0.05 // XXX: YMIR I just changed this in hope of getting more performance (at the cost of accuracy)
 
 
@@ -77,12 +95,16 @@ int get_thread_id() {
 #endif
 }
 
+
+
 bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
   if(__sync_bool_compare_and_swap(x, exp, newv)) {
     return true;
   }
   return false;
 }
+
+
 
 void statistics_init(int numbuckets) {
 #if USE_ROUNDER
