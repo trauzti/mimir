@@ -26,10 +26,10 @@ struct {
 	int num_threads;
 	int maxbytes;
 	int chunk_size;
-} settings = { 
-	.num_threads = 1, 
-	.maxbytes = 1024*1024,
-	.chunk_size = 1024
+} settings = {
+	.num_threads = 1,
+	.maxbytes = 0, // must be set somewhere in syslab-cache
+	.chunk_size = 1
 };
 
 #endif
@@ -157,7 +157,7 @@ void statistics_init(int numbuckets) {
 
 void statistics_terminate() {
 #if USE_ROUNDER
-/* XXX: TO DO 
+/* XXX: TO DO
   int clsid;
   free(stails);
   free(buckets);
@@ -343,7 +343,7 @@ void statistics_miss(unsigned int clsid, unsigned int hv) {
   __sync_bool_compare_and_swap((unsigned int *)&ghosthits, (unsigned int)oldghosthits, (unsigned int)newghosthits);
     // if failed just continue
   //TODO: update the start and end indices
-  //ghostplus[tid][0] = ghosthits; // NEVER USED 
+  //ghostplus[tid][0] = ghosthits; // NEVER USED
 #endif
 }
 
@@ -388,7 +388,7 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
   dablooms_hash_func_with_hv(cfs[HeadFilter % 3], hv, hashes[tid]);
 
 #if USE_GLOBAL_FILTER
-  // Assume capacity and FPP rate of cfs_global is equal to cfs[i] 
+  // Assume capacity and FPP rate of cfs_global is equal to cfs[i]
   if (!counting_bloom_check_with_hash(cfs_global, hashes[tid])) {
     __sync_fetch_and_add(&cfs_global_counter, 1);
     counting_bloom_add_with_hash(cfs_global, hashes[tid]); // returns 0
@@ -398,7 +398,7 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
     cfs_global_counter = 0;
     memset (cfs_global->bitmap->array, 0, cfs_global->bitmap->bytes);
   }
-#endif 
+#endif
 #endif
 
 
