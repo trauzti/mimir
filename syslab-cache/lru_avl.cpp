@@ -114,7 +114,9 @@ int lru_avl::avl_stackdistance(avlnode *n) {
   // traverse the tree and count the number of elements younger than this one
   int ld = LD(n) - 1;
   int cl = tree.count_less(n);
+#ifdef DEBUG
   printf("ld=%d, cl=%d\n", ld, cl);
+#endif
   return LD(n) - 1; // start from 0
 }
 

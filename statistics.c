@@ -45,13 +45,6 @@ struct {
 // last, last+1 , ... , head
 // tailbucket, tailbucket+1, ..... , firstbucket
 
-typedef struct _classstats {
-	int stail;
-	unsigned int *buckets;
-	float *plus;
-	//float *ghostplus;
-} classstats;
-
 classstats *classes;
 
 int failures;
@@ -131,7 +124,11 @@ void statistics_init(int numbuckets) {
   cfcounters = (unsigned int *) calloc(3, sizeof(unsigned int));
   int minsize = (int) ( sizeof(item) + settings.chunk_size);
   printf("min total item size=%d\n",  minsize);
+#ifdef SYSLAB_CACHE
+  ghostlistcapacity = 200; // XXX HAAAACK
+#else
   ghostlistcapacity = settings.maxbytes / minsize;
+#endif
   perfilter = ghostlistcapacity / 2;
   printf("ghostlistcapacity=%d\n", ghostlistcapacity);
   printf("perfilter=%d\n", perfilter);
@@ -365,7 +362,9 @@ void statistics_set(int clsid, item *e) {
 
 
 void rotateFilters(void) {
+#ifndef SYSLAB_CACHE
   printf("rotating filters\n");
+#endif
   // TODO: trylock this
   // make sure only one thread does this at once
   int last = (HeadFilter + 2)  % 3;
@@ -399,8 +398,6 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
     memset (cfs_global->bitmap->array, 0, cfs_global->bitmap->bytes);
   }
 #endif
-#endif
-
 
   if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
     //cfcounters[HeadFilter % 3]++;
@@ -410,6 +407,8 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
   if (cfcounters[HeadFilter % 3] > perfilter) {
     rotateFilters();
   }
+#endif
+
 
 #if USE_ROUNDER
   if (likely (e != NULL))

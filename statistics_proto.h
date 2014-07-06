@@ -22,6 +22,13 @@ typedef struct interval {
   int end;
 } interval_t;
 
+typedef struct _classstats {
+	int stail;
+	unsigned int *buckets;
+	float *plus;
+	//float *ghostplus;
+} classstats;
+
 
 extern int failures;
 extern int HeadFilter;

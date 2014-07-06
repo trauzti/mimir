@@ -10,6 +10,16 @@
 
 #include "statistics.h"
 
+typedef struct _classstats {
+        int stail;
+        unsigned int *buckets;
+        float *plus;
+        //float *ghostplus;
+} classstats;
+
+extern classstats *classes;
+
+
 class statistics_algorithm_base {
 public:
   programoptions p;
@@ -70,12 +80,10 @@ public:
     int sz, i; // reverse mapped i
     fprintf(stderr, "Writing the CDF to the file: %s\n", filename);
     FILE *fp = Fopen(filename, "w");
-    /* 
     for (i = 0; i < p.cdfsize; i++) {
       sz = 1 + (int) ( p.cachesize * (i / (0.0 + p.cdfsize)) ); // stack distance 0 is cache size 1
       fprintf(fp, "%d %f\n", sz, CDF[i]);
     }
-    */ 
     fclose(fp);
     fprintf(stderr, "Done writing the CDF to a file\n");
   }
