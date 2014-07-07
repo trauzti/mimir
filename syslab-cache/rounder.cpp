@@ -50,7 +50,7 @@ void rounder::Evict(item *it) {
 
 
 void rounder::printStatistics() {
-  self.CDF = classes[0].CDF;
+  //self.CDF = classes[0].CDF;
   fprintf(stderr, "hits = %d, misses = %d\n", hits, misses);
   if (requests > 0) {
     assert ( hits + misses == requests );

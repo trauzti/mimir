@@ -10,12 +10,12 @@
 
 #include "statistics.h"
 
-typedef struct _classstats {
-        int stail;
-        unsigned int *buckets;
-        float *plus;
-        //float *ghostplus;
-} classstats;
+//typedef struct _classstats {
+//        int stail;
+//        unsigned int *buckets;
+//        float *plus;
+//        //float *ghostplus;
+//} classstats;
 
 extern classstats *classes;
 
