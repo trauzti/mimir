@@ -112,7 +112,7 @@ int lru_avl::get_stackdistance(item *it) {
 
 int lru_avl::avl_stackdistance(avlnode *n) {
   // traverse the tree and count the number of elements younger than this one
-  int cl = tree.count_less(n);
+  int cl = tree.count_less(n); // this is faster than LD, uses a loop instead of recursion
 #ifdef DEBUG
   //int ld = LD(n) - 1;
   //printf("ld=%d, cl=%d\n", ld, cl);
