@@ -125,4 +125,4 @@ for bc in sorted(bcs.keys()):
 
 plt.savefig('overhead.png', format='png')
 plt.savefig('overhead.eps', format='eps', dpi=1000)
-plt.show()
+#plt.show()

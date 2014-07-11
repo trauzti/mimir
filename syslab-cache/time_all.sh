@@ -1,27 +1,36 @@
 #!/bin/sh
 
-TRACE=P10.lis
+#TRACE=P10.lis
 #TRACE=P11.lis
-#TRACE=long_w2.asc.rdtr
+TRACE=long_w2.asc.rdtr
 
-mkdir -p output
+rvals="1 17 121 251 1023 2040 10001 100001"
 
 runs=10
 #runs=40
-for r in $(seq $runs)
+for R in $rvals
 do
-    fn="lru_regular_${r}"
-    printf "$fn   \r"
-    #./syslab_cache -c LRU_LINKEDLIST -s BASIC -n 5000 -f $TRACE >output/$fn 2>&1
-    fn="lru_rounder_${r}"
-    printf "$fn   \r"
-    ./syslab_cache -c LRU_LINKEDLIST -s ROUNDER -n 5000 -f $TRACE >output/$fn 2>&1
-    fn="lru_avl_${r}"
-    printf "$fn   \r"
-    #./syslab_cache -c LRU_AVL -s BASIC -n 5000 -f $TRACE >output/$fn 2>&1
-    fn="lru_mattson_${r}"
-    printf "$fn   \r"
-    #./syslab_cache -c LRU_MATTSON -s BASIC -n 5000 -f $TRACE >output/$fn 2>&1
+    echo "Doing R=${R}"
+    mkdir -p output
+    for run in $(seq $runs)
+    do
+    mkdir -p output
+        fn="lru_regular_${run}"
+        printf "$fn   \r"
+        #./syslab_cache -c LRU_LINKEDLIST -s BASIC -n 5000 -R RR -f $TRACE >output/$fn 2>&1
+        fn="lru_rounder_${run}"
+        printf "$fn   \r"
+        ./syslab_cache -c LRU_LINKEDLIST -s ROUNDER -n 5000 -R $R -f $TRACE >output/$fn 2>&1
+        fn="lru_avl_${run}"
+        printf "$fn   \r"
+        #./syslab_cache -c LRU_AVL -s BASIC -n 5000 -R $R -f $TRACE >output/$fn 2>&1
+        fn="lru_mattson_${run}"
+        printf "$fn   \r"
+        #./syslab_cache -c LRU_MATTSON -s BASIC  -n 5000 -R $R -f $TRACE >output/$fn 2>&1
+    done
+    python2 parse_output.py > overhead.txt
+    cp -r output output_R_${R}
+    mv overhead.* output_R_${R}
 done
 printf "\033[J"
 

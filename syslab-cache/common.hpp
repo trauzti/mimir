@@ -52,7 +52,7 @@ public:
 class programoptions {
 public:
   int simulation_mode, cachesize, cdfsize, verbose, threads;
-  int statistics_buckets;
+  int statistics_buckets, R; // R is the sampling rate
   string cache_algorithm, statistics_algorithm;
   string tracefilename, cdffilename;
   bool writecdf = false;

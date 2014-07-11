@@ -46,7 +46,7 @@ extern float ghosthits;
 int get_size(int clsid); 
 */
 
-void statistics_init(int numbuckets);
+void statistics_init(int numbuckets, int R);
 void statistics_terminate(void);
 
 extern counting_bloom_t **cfs;

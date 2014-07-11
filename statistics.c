@@ -17,7 +17,7 @@
 #include "murmur3_hash.h"
 
 
-static int R = (1 << 30) - 1; // so we can use & instead of % (because it is faster)
+static int R;
 
 #ifdef SYSLAB_CACHE
 const int get_size(int clsid) {
@@ -101,7 +101,7 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 
 
 
-void statistics_init(int numbuckets) {
+void statistics_init(int numbuckets, int mR) {
 #if USE_ROUNDER
   classstats *cs;
   B = numbuckets;
@@ -127,8 +127,8 @@ void statistics_init(int numbuckets) {
   int minsize = (int) ( sizeof(item) + settings.chunk_size);
   printf("min total item size=%d\n",  minsize);
 #ifdef SYSLAB_CACHE
-  // TODO: change the R from the input settings of syslab-cache
-  // R = 10;
+  R = mR;
+  printf("setting the sampling rate. R=%d\n", R);
   ghostlistcapacity = 200; // XXX HAAAACK
 #else
   ghostlistcapacity = settings.maxbytes / minsize;
@@ -298,8 +298,7 @@ void statistics_hit(int clsid, item *e) {
 
 
 void statistics_miss(unsigned int clsid, unsigned int hv) {
-  return;
-  if ( (hv & R) != 0) return; // sampling
+  if ( (hv % R) != 0) return; // sampling
 #if USE_GHOSTLIST
   //printf("miss(%s)\n", key);
   int tid = get_thread_id();
@@ -383,8 +382,7 @@ void rotateFilters(void) {
 
 
 void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
-  return;
-  if ((hv & R) != 0) return; // sampling
+  if ((hv % R) != 0) return; // sampling
 #if USE_GHOSTLIST
   int tid = get_thread_id();
   //char *key = ITEM_key(e);

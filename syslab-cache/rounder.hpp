@@ -12,7 +12,7 @@ class rounder : public statistics_algorithm_base {
 public: 
   rounder() {}
   rounder(programoptions p) :  statistics_algorithm_base(p) {
-    statistics_init(p.statistics_buckets);
+    statistics_init(p.statistics_buckets, p.R);
     //int perbucket = p.cachesize / p.statistics_buckets;
   }
 

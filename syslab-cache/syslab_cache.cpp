@@ -22,6 +22,7 @@ programoptions parse_programoptions(int argc, char **argv) {
                            "o:"  /* cdf filename */
                            "n:" /* cache size */
                            "l:" /* cdf size */
+                           "R:" /* sampling rate */
                            "c:" /* cache algorithm */
                            "t:" /* number of threads */
                            "b:" /* number of buckets for statistics */
@@ -64,6 +65,9 @@ programoptions parse_programoptions(int argc, char **argv) {
       break;
     case 's':
       p.statistics_algorithm = string(optarg);
+      break;
+    case 'R':
+      p.R = atoi(optarg);
       break;
     default:
       break;
