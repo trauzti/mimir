@@ -15,6 +15,7 @@ typedef struct _queue_t {
 cache_algorithm_base *_alg;
 programoptions _p;
 queue_t _q;
+static char hitBuffer[1024];
 
 void singlethread_requests(programoptions p, cache_algorithm_base *alg) {
   struct timespec t1, t2;
@@ -32,8 +33,10 @@ void singlethread_requests(programoptions p, cache_algorithm_base *alg) {
     *space = '\0';
     char *key = buf;
     if ((it = alg->get(key)) != NULL) {
+      /* Make sure we do some work (i.e. copy memory) when there is a hit */
+      strncpy (hitBuffer, it->value, sizeof(hitBuffer)-1);
       if (p.verbose) {
-        printf("HIT(%s)!, it=%p\n", key, it);
+        printf("HIT(%s)!, it=%p, %c\n", key, it, hitBuffer[0]);
       }
     } else {
       if (p.verbose) {
