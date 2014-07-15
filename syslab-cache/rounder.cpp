@@ -33,7 +33,6 @@ void rounder::Miss(const char *key) {
   ++misses;
   ++requests;
 	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
-  printf("Miss -- hv(%s)=%u\n", key, hv);
   statistics_miss(0, hv);
 }
 
@@ -46,7 +45,6 @@ void rounder::Set(item *it) {
 void rounder::Evict(item *it) {
   const char *key = it->key;
 	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
-  printf("Evict -- hv(%s)=%u\n", key, hv);
   statistics_evict(0, hv, it);
 }
 

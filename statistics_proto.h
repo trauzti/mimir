@@ -26,7 +26,7 @@ typedef struct _classstats {
 	int stail;
 	unsigned int *buckets;
 	float *plus;
-	//float *ghostplus;
+//	float *ghostplus;
 } classstats;
 
 
