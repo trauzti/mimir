@@ -17,7 +17,7 @@
 #include "murmur3_hash.h"
 
 
-static int R = 1;
+static int R = 100;
 
 #ifdef SYSLAB_CACHE
 const int get_size(int clsid) {
@@ -120,6 +120,7 @@ void statistics_init(int numbuckets, int mR) {
   }
 #endif
 #if USE_GHOSTLIST
+  R = mR;
   HeadFilter = 0;
   ghosthits = 0;
   cfs = (counting_bloom_t **) malloc(3 * sizeof(counting_bloom_t *));
@@ -127,7 +128,6 @@ void statistics_init(int numbuckets, int mR) {
   int minsize = (int) ( sizeof(item) + settings.chunk_size);
   printf("min total item size=%d\n",  minsize);
 #ifdef SYSLAB_CACHE
-  R = mR;
   printf("setting the sampling rate. R=%d\n", R);
   ghostlistcapacity = 200; // XXX HAAAACK
 #else

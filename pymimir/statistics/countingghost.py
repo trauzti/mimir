@@ -52,11 +52,11 @@ class ghostclass:
         last = (self.first + 2) % 3
 
         for index in [first, second, last]:
-            end += self.counters[index]
+            end += self.R * self.counters[index]
             if self.cfs[index].check(key):
                 found = True
                 break
-            start += self.counters[index]
+            start += self.R * self.counters[index]
 
         if found:
             if end > self.capacity:
@@ -66,7 +66,7 @@ class ghostclass:
             else:
                 self.ghosthits += self.R * (1.0 - FPP_RATE)
             val = self.R * ( 1.0 / (end - start) ) * (1.0 - FPP_RATE)
-            for i in xrange(start, end):
+            for i in xrange(start, min(int(1.5*self.capacity), end)):
                 self.pdf[i] += val
         else:
             self.ghostmisses += 1
@@ -80,7 +80,7 @@ class ghostclass:
         #print "Evict", hv
         if (hv % self.R) != 0:
             return
-        if self.counters[self.first] >= self.capacity_per_filter:
+        if self.R * self.counters[self.first] >= self.capacity_per_filter:
             self.rotateFilters()
         if not self.cfs[self.first].check(key):
             #print "inserting %s into the first filter" % key
@@ -88,7 +88,7 @@ class ghostclass:
             self.counters[self.first] += 1
 
     def rotateFilters(self):
-        assert self.counters[self.first] >= self.capacity_per_filter
+        assert self.R * self.counters[self.first] >= self.capacity_per_filter
         last = (self.first + 2) % 3
         # clear the last filter and make it an empty first filter
         self.cfs[last] = pydablooms.Dablooms(capacity=self.capacity_per_filter, error_rate=FPP_RATE, filepath="%d_%s" %(last, self.filepath))
@@ -116,6 +116,7 @@ class ghostclass:
 
     def printStatistics(self):
         self.printCounters()
+
         realghosthits = sum([self.pdf[i] for i in xrange(self.capacity)])
         print "Rignored=%d vs Rpassed=%d" % (self.Rignored, self.Rpassed)
         print "ghosthits=%.3f , realghosthits=%.3f" % (self.ghosthits, realghosthits)
