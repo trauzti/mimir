@@ -33,6 +33,7 @@ void rounder::Miss(const char *key) {
   ++misses;
   ++requests;
 	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
+  printf("Miss -- hv(%s)=%u\n", key, hv);
   statistics_miss(0, hv);
 }
 
@@ -45,6 +46,7 @@ void rounder::Set(item *it) {
 void rounder::Evict(item *it) {
   const char *key = it->key;
 	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
+  printf("Evict -- hv(%s)=%u\n", key, hv);
   statistics_evict(0, hv, it);
 }
 
@@ -52,6 +54,7 @@ void rounder::Evict(item *it) {
 void rounder::printStatistics() {
   //self.CDF = classes[0].CDF;
   fprintf(stderr, "hits = %d, misses = %d\n", hits, misses);
+  print_ghosthits();
   if (requests > 0) {
     assert ( hits + misses == requests );
     fprintf(stderr, "hitratio = %.5f\n", (hits + 0.0) / requests);

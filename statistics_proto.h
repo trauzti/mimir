@@ -65,6 +65,7 @@ void remove_from_bucket(int clsid, int activity);
 int add_to_head(int clsid);
 interval_t get_stack_distance(int clsid, int activity);
 
+void print_ghosthits();
 
 /** Background thread **/
 extern pthread_t mimir_thread_id;

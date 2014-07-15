@@ -175,7 +175,7 @@ class MemcachedFactory(protocol.Factory):
         reactor.run(installSignalHandlers=installSignalHandlers)
 
 class Cache(object):
-    def __init__(self, name, size, bc=64, filters=3):
+    def __init__(self, name, size, bc=64, filters=3, R=1):
         if name not in cache_algorithms.keys():
             raise Exception("%s not valid" % name)
         self.name = name
@@ -183,7 +183,7 @@ class Cache(object):
         self.filters = filters
         self.size = size
         self.cache = cache_algorithms[name](size)
-        self.cache.stats = statscollector(size=size, bc=bc, filters=filters)
+        self.cache.stats = statscollector(size=size, bc=bc, filters=filters, R=R)
         print "Cache initialized. Algorithm=%s, size=%d" % (name, size)
     def put(self, *args, **kwargs):
         return self.cache.put(*args, **kwargs)
@@ -239,13 +239,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-H", "--host", help="The address to listen on", type=str, default="", required=False)
     parser.add_argument("-P", "--port", help="The port to listen on", type=int, default=1337, required=False)
+    parser.add_argument("-R", "--sampling", help="The sampling rate", type=int, default=1, required=False)
     parser.add_argument("-c", "--cachealgorithm", help="The cache algorithm to use", type=str, required=True)
     parser.add_argument("-n", "--cachesize", help="The cache size to use", type=int, required=True)
     parser.add_argument("-l", "--listen", help="Listen over network", type=bool, default=True, required=False)
     parser.add_argument("-t", "--tracefile", help="Use this trace file", type=str, default="", required=False)
     args = parser.parse_args()
 
-    cache = Cache(args.cachealgorithm, args.cachesize)
+    cache = Cache(args.cachealgorithm, args.cachesize, R=args.sampling)
     if args.tracefile:
         print "Reading requests from file: %s" % args.tracefile
         cache.file(args.tracefile)
@@ -256,3 +257,6 @@ if __name__ == "__main__":
     else:
         print "Reading requests from stdin"
         cache.stdin()
+    cache.cache.stats.printStatistics()
+    cache.cache.stats.ghostlist.printStatistics()
+
