@@ -5065,7 +5065,7 @@ int main (int argc, char **argv) {
     bool protocol_specified = false;
     bool tcp_specified = false;
     bool udp_specified = false;
-    enum hashfunc_type hash_type = JENKINS_HASH;
+    enum hashfunc_type hash_type = MURMUR3_HASH; //JENKINS_HASH;
     uint32_t tocrawl;
 
     char *subopts;
