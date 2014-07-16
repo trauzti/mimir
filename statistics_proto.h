@@ -33,6 +33,7 @@ typedef struct _classstats {
 extern int failures;
 extern int HeadFilter;
 extern int B; // number of buckets
+extern int R; // number of buckets
 extern int *stails; // tail values, need to use % B to get the bucket index
 extern unsigned int **buckets; // buckets[POWER_LARGEST][8]; 
 extern float **plus; // plus[POWER_LARGEST][101];

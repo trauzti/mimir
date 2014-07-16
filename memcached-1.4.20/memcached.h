@@ -348,6 +348,7 @@ typedef struct _stritem {
     struct _stritem *h_next;    /* hash chain next */
 #ifdef MIMIR
     int activity;  /* MIMIR HACK */
+    unsigned int mimir_hash;
 #endif
     rel_time_t      time;       /* least recent access */
     rel_time_t      exptime;    /* expire time */

@@ -17,7 +17,7 @@
 #include "murmur3_hash.h"
 
 
-static int R = 100;
+int R = 100;
 
 #ifdef SYSLAB_CACHE
 const int get_size(int clsid) {

@@ -15,6 +15,7 @@
 #include <unistd.h>
 #ifdef MIMIR
 #include "murmur3_hash.h"
+#include "statistics_proto.h"
 #endif
 
 /* Forward Declarations */
@@ -227,6 +228,10 @@ item *do_item_alloc(char *key, const size_t nkey, const int flags,
     DEBUG_REFCNT(it, '*');
     it->it_flags = settings.use_cas ? ITEM_CAS : 0;
     it->nkey = nkey;
+#ifdef MIMIR
+    it->activity = 0;
+    it->mimir_hash = MurmurHash3_x86_32(key, nkey);
+#endif
     it->nbytes = nbytes;
     memcpy(ITEM_key(it), key, nkey);
     it->exptime = exptime;
@@ -291,6 +296,7 @@ static void item_link_q(item *it) { /* item is the new head */
     return;
 }
 
+
 static void item_unlink_q(item *it) {
     item **head, **tail;
     assert(it->slabs_clsid < LARGEST_ID);
@@ -319,7 +325,11 @@ static void item_unlink_q(item *it) {
     mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
  #else
     /* May be faster to just bypass memory */
-    statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
+    //statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
+    if (it->mimir_hash == 0UL)
+         it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
+    if ((it->mimir_hash % R) == 0)
+         statistics_evict (it->slabs_clsid, it->mimir_hash, it);
  #endif
 #endif
 
