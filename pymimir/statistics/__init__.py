@@ -9,13 +9,14 @@ import rounder
 from common import make_cdf
 
 class statscollector(object):
-    def __init__(self, size=0, bc=0, filters=3):
+    def __init__(self, size=0, bc=0, filters=3, R=1):
         self.size = size
         self.bc = bc
+        self.R = R
         self.filters = filters
         self.stats = rounder.statclass(size, bc)
         # default 3 filters in the countingghost class
-        self.ghostlist = countingghost.ghostclass(capacity=size)
+        self.ghostlist = countingghost.ghostclass(capacity=size, R=R)
 
     def Miss(self, key):
         self.stats.Miss(key)

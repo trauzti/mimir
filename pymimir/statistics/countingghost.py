@@ -1,4 +1,5 @@
 import pydablooms
+import smhasher
 import random
 from math import ceil
 
@@ -10,7 +11,7 @@ class ghostclass:
 
     # eviction in the main cache
     # use: g = ghostclass(capacity=capacity)
-    def __init__(self, capacity=0, filepath="ghostlist.bf"):
+    def __init__(self, R=1, capacity=0, filepath="ghostlist.bf"):
         self.filepath = filepath
         self.capacity_per_filter = int(ceil(0.5 * capacity))
         for i in xrange(3):
@@ -25,6 +26,10 @@ class ghostclass:
         self.ghosthits = 0
         self.ghostmisses = 0
         self.rotations = 0
+        self.R = R
+        print "R=%d" % R
+        self.Rignored = 0
+        self.Rpassed = 0
         self.ghostplus = [0.0 for c in xrange(capacity)]
         self.pdf = [0.0 for j in xrange(int(ceil(1.5*capacity)))]
 
@@ -32,47 +37,50 @@ class ghostclass:
     # use: x = Miss(key)
     # post: x == True <==> key was found in the ghostlist
     def Miss(self, key):
+        hv = smhasher.murmur3_x64_64(key)
+        if (hv % self.R) != 0:
+            self.Rignored += 1
+            return
+        else:
+            self.Rpassed += 1
         found = False
         start = 0
         end = 0
         val = 0
-        for i in xrange(3):
-            index = (self.first + i) % 3
-            end += self.counters[index]
+        first = self.first % 3
+        second = (self.first + 1) % 3
+        last = (self.first + 2) % 3
+
+        for index in [first, second, last]:
+            end += self.R * self.counters[index]
             if self.cfs[index].check(key):
-                if i == 2:
-                    second = (self.first + 1) % 3
-                    last = (self.first + 2) % 3
-                    firsttwo_contain = self.counters[self.first] + self.counters[second]
-                    if sum(self.counters) <= self.capacity:
-                        self.ghosthits += 1.0 * (1.0 - FPP_RATE)
-                    elif (firsttwo_contain < self.capacity) and self.counters[last] > 0:
-                        # the first two filters are too small to cover up to 2x
-                        # the element is in the last filter and could have been a hit in a cache of size 2x
-                        # the probability is the ratio of elements that the last filter contains that lie in the 2x range
-                        prob_in_bounds = (sum(self.counters) - firsttwo_contain) / float(self.counters[last])
-                        val = 1.0 * (1.0 - FPP_RATE) * prob_in_bounds
-                        self.ghosthits += val
-                else:
-                    val = 1.0 * (1.0 - FPP_RATE)
-                    self.ghosthits += val
                 found = True
                 break
-            start += self.counters[index]
-            #print "Miss but found key(%s) in cf #%d" % (key, index)
-        if not found:
-            self.ghostmisses += 1
+            start += self.R * self.counters[index]
+
+        if found:
+            if end > self.capacity:
+                # This is overestimating values from [capacity,...,1.5*capacity]
+                # hence scale down
+                self.ghosthits += self.R * (1.0 - FPP_RATE) * (self.capacity - start) / (end - start)
+            else:
+                self.ghosthits += self.R * (1.0 - FPP_RATE)
+            val = self.R * ( 1.0 / (end - start) ) * (1.0 - FPP_RATE)
+            for i in xrange(start, min(int(1.5*self.capacity), end)):
+                self.pdf[i] += val
         else:
-            count = float(end - start)
-            #TODO: use PLUS array
-            for i in xrange(start, end):
-                self.pdf[i] += val / count
+            self.ghostmisses += 1
+
         return found
 
     # eviction in the main cache
     # use: Evict(key)
     def Evict(self, key):
-        if self.counters[self.first] >= self.capacity_per_filter:
+        hv = smhasher.murmur3_x64_64(key)
+        #print "Evict", hv
+        if (hv % self.R) != 0:
+            return
+        if self.R * self.counters[self.first] >= self.capacity_per_filter:
             self.rotateFilters()
         if not self.cfs[self.first].check(key):
             #print "inserting %s into the first filter" % key
@@ -80,7 +88,7 @@ class ghostclass:
             self.counters[self.first] += 1
 
     def rotateFilters(self):
-        assert self.counters[self.first] >= self.capacity_per_filter
+        assert self.R * self.counters[self.first] >= self.capacity_per_filter
         last = (self.first + 2) % 3
         # clear the last filter and make it an empty first filter
         self.cfs[last] = pydablooms.Dablooms(capacity=self.capacity_per_filter, error_rate=FPP_RATE, filepath="%d_%s" %(last, self.filepath))
@@ -108,6 +116,9 @@ class ghostclass:
 
     def printStatistics(self):
         self.printCounters()
-        print "ghosthits=%d" % self.ghosthits
+
+        realghosthits = sum([self.pdf[i] for i in xrange(self.capacity)])
+        print "Rignored=%d vs Rpassed=%d" % (self.Rignored, self.Rpassed)
+        print "ghosthits=%.3f , realghosthits=%.3f" % (self.ghosthits, realghosthits)
         print "ghostmisses=%d" % self.ghostmisses
         print "rotations=%d" % self.rotations

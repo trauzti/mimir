@@ -5587,7 +5587,7 @@ int main (int argc, char **argv) {
 
     /* MIMIR hack: initialize thread */
 #ifdef MIMIR
-    statistics_init (mimir_buckets);
+    statistics_init (mimir_buckets, 121);
 
  #ifdef MIMIR_BACKGROUND_THREAD
     fprintf (stderr, "Starting background thread...\n");
