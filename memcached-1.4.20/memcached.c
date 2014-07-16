@@ -4831,7 +4831,8 @@ static void usage(void) {
            "              - lru_crawler_tocrawl: Max items to crawl per slab per run\n"
            "                default is 0 (unlimited)\n"
 #ifdef MIMIR
-           "-Z <buckets>     MIMIR HACK. Number of buckets to use (default 8)"
+           "-Z <buckets>   MIMIR HACK. Number of buckets to use (default 8)\n"
+           "-Y <rate>      MIMIR HACK. Sampling rate - R parameter (default 121)\n"
 #endif
            );
     return;
@@ -5058,6 +5059,7 @@ int main (int argc, char **argv) {
     static int *l_socket = NULL;
 #ifdef MIMIR
     int mimir_buckets = 8;
+    int mimir_sampling_rate = 121;
 #endif
 
     /* udp socket */
@@ -5140,6 +5142,7 @@ int main (int argc, char **argv) {
           "o:"  /* Extended generic options */
 #ifdef MIMIR
           "Z:" /* Number of bins */
+          "Y:" /* Sampling rate */
 #endif
         ))) {
         switch (c) {
@@ -5425,6 +5428,9 @@ int main (int argc, char **argv) {
         case 'Z':
            mimir_buckets = atoi(optarg);
            break;
+        case 'Y':
+           mimir_sampling_rate = atoi(optarg);
+           break;
 #endif
         default:
             fprintf(stderr, "Illegal argument \"%c\"\n", c);
@@ -5587,7 +5593,7 @@ int main (int argc, char **argv) {
 
     /* MIMIR hack: initialize thread */
 #ifdef MIMIR
-    statistics_init (mimir_buckets, 121);
+    statistics_init (mimir_buckets, mimir_sampling_rate);
 
  #ifdef MIMIR_BACKGROUND_THREAD
     fprintf (stderr, "Starting background thread...\n");
