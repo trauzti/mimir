@@ -57,8 +57,7 @@ for fn in files:
 
 averages = {}
 stdevs = {}
-alg_order = [("lru", "regular"), ("lru+rounder","rounder"), ("lru+avl","avl"), ("lru+mattson","mattson")]
-#alg_order = [("lru", "regular"), ("lru+avl","avl"), ("lru+mattson","mattson")]
+alg_order =   [("Mattson", "mattson") , ("AVL-tree","avl"),  ("MIMIR", "rounder") ,  ("LRU without profiler", "regular")]
 sizes = [5000]
 N = len(alg_order)
 M = len(sizes)
@@ -101,7 +100,7 @@ ax.set_title('Statistics algorithms')
 ax.set_xticks(ind+offset + width *(M / 2.0))
 #ax.set_xticklabels( tuple(map(str, sorted(mems.keys()))) )
 
-ax.legend( tuple(rects[i][0] for i in xrange(N)), tuple(rects[i][1] for i in xrange(N)) )
+ax.legend( tuple(rects[i][0] for i in xrange(N)), tuple(rects[i][1] for i in xrange(N)), loc='upper left' )
 #ax.legend( (rects1[0], rects2[0]), ('Unmodified', 'Rounder B=4') )
 
 """ # TODO: fixme!!
