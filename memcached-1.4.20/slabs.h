@@ -46,4 +46,7 @@ enum reassign_result_type slabs_reassign(int src, int dst);
 void slabs_rebalancer_pause(void);
 void slabs_rebalancer_resume(void);
 
+/* MIMIR hack */
+unsigned int get_power_largest(void);
+
 #endif

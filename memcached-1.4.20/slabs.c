@@ -69,6 +69,11 @@ static void do_slabs_free(void *ptr, const size_t size, unsigned int id);
    smaller ones will be made.  */
 static void slabs_preallocate (const unsigned int maxslabs);
 
+/* MIMIR hack */
+unsigned int get_power_largest(void) {
+    return power_largest;
+}
+
 /*
  * Figures out which slab class (chunk size) is required to store an item of
  * a given size.
