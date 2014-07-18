@@ -183,6 +183,7 @@ class Cache(object):
         self.filters = filters
         self.size = size
         self.cache = cache_algorithms[name](size)
+        self.R = R
         self.cache.stats = statscollector(size=size, bc=bc, filters=filters, R=R)
         print "Cache initialized. Algorithm=%s, size=%d" % (name, size)
     def put(self, *args, **kwargs):
@@ -221,8 +222,9 @@ class Cache(object):
         # filename: algorithm_trace_buckets_cachesize_ghostlistsize
         trcbase = os.path.split(filename)[-1].replace(".trc", "")
         trcbase = trcbase.replace("_", "")
-        fprefix = "output/%s_%s_%d_%d_%d" % (self.name,trcbase, self.bc, self.size, self.size)
+        fprefix = "output/%s_%s_%d_%d_%d_R%d" % (self.name, trcbase, self.bc, self.size, self.size, self.R)
         self.cache.stats.printStatistics("%s.stats" % fprefix)
+        cache.cache.stats.ghostlist.printStatistics("%s.ghoststats" % fprefix)
         f = open("%s.histogram" % fprefix , "w")
         for i in xrange(len(jcdf)):
             f.write("%d %f\n" % (i, jcdf[i]))

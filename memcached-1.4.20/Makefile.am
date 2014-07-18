@@ -29,7 +29,7 @@ memcached_mimir_SOURCES += statistics.c statistics.h \
 memcached_mimir_noghost_SOURCES = $(memcached_mimir_SOURCES)
 
 memcached_mimir_LDADD = -lm
-memcached_mimir_CFLAGS = -DMIMIR #-pg
+memcached_mimir_CFLAGS = -DMIMIR -pg
 
 memcached_mimir_noghost_LDADD = -lm
 memcached_mimir_noghost_CFLAGS = -DMIMIR -DFORCE_NO_GHOSTLIST #-pg
