@@ -125,7 +125,8 @@ void statistics_init(int numbuckets, int mR) {
 #endif
 #if USE_GHOSTLIST
   R = mR;
-  printf("setting the sampling rate. R=%d\n", R);
+  printf ("Using ghost filter.\n");
+  printf (" - setting the sampling rate. R=%d\n", R);
   HeadFilter = 0;
   ghosthits = 0;
   cfs = (counting_bloom_t **) malloc(3 * sizeof(counting_bloom_t *));
@@ -133,13 +134,13 @@ void statistics_init(int numbuckets, int mR) {
   int minsize = (int) ( sizeof(item) + settings.chunk_size);
   printf("min total item size=%d\n",  minsize);
 #ifdef SYSLAB_CACHE
-  ghostlistcapacity = 200; // XXX HAAAACK
+  ghostlistcapacity = 5000; // XXX HAAAACK
 #else
   ghostlistcapacity = settings.maxbytes / minsize;
 #endif
   perfilter = ghostlistcapacity / 2;
-  printf("ghostlistcapacity=%d\n", ghostlistcapacity);
-  printf("perfilter=%d\n", perfilter);
+  printf(" - ghostlistcapacity=%d\n", ghostlistcapacity);
+  printf(" - perfilter=%d\n", perfilter);
 #if USE_GLOBAL_FILTER
   cfs_global = new_counting_bloom(perfilter, FPP_RATE, "/dev/shm/mimir-cfs-global.cf");
   cfs_global_counter = 0;
@@ -156,6 +157,8 @@ void statistics_init(int numbuckets, int mR) {
   for (; tid <= settings.num_threads; tid++) {
     hashes[tid] = (uint32_t *) calloc(cfs[0]->nfuncs, sizeof(uint32_t));
   }
+#else
+  printf ("Ghost list disabled.\n");
 #endif
 }
 
@@ -265,6 +268,8 @@ void update_mapped_plus(int clsid, int start, int end) {
 
   // just to check if the threads are the bottleneck
   // XXX YV: removed the 'tid' index to the plus array. threads may become a bottleneck again
+  // TS: put the tid val again
+  //int tid = get_thread_id();
   int tid = get_thread_id();
   classes[tid].plus[start] += val;
   classes[tid].plus[end] -= val;

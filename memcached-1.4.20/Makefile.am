@@ -1,6 +1,6 @@
 bin_PROGRAMS = memcached
 pkginclude_HEADERS = protocol_binary.h
-noinst_PROGRAMS = memcached-mimir memcached-debug sizes testapp timedrun
+noinst_PROGRAMS = memcached-mimir memcached-mimir-noghost memcached-debug sizes testapp timedrun
 
 BUILT_SOURCES=
 
@@ -26,9 +26,13 @@ memcached_mimir_SOURCES += statistics.c statistics.h \
 		    sbuf.c sbuf.h \
 		    murmur.c murmur.h
 
-memcached_mimir_LDADD = -lm
-memcached_mimir_CFLAGS = -DMIMIR #-pg
+memcached_mimir_noghost_SOURCES = $(memcached_mimir_SOURCES)
 
+memcached_mimir_LDADD = -lm
+memcached_mimir_CFLAGS = -DMIMIR -pg
+
+memcached_mimir_noghost_LDADD = -lm
+memcached_mimir_noghost_CFLAGS = -DMIMIR -DFORCE_NO_GHOSTLIST #-pg
 
 if BUILD_CACHE
 memcached_SOURCES += cache.c

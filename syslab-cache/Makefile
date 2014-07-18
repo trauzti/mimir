@@ -1,6 +1,6 @@
 CC= g++-4.8
-CFLAGS= -O3 -DSYSLAB_CACHE -DMIMIR -std=c++11 -g  -static
-LFLAGS= -lpthread  -fpermissive # -ljemalloc
+CFLAGS= -O3 -DSYSLAB_CACHE -DMIMIR -std=c++11 -ggdb3 -static
+LFLAGS= -lpthread  -fpermissive  # -ljemalloc
 BINS= syslab_cache test_hashmap test_linkedlist test_avltree
 OBJECTS= sbuf.o dablooms.o murmur3_hash.o hash.o statistics.o lru_linkedlist.o lru_avl.o lru_mattson.o common.o rounder.o readqueue.o #socket_server.o
 INCLUDES= 

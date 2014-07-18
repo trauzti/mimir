@@ -40,6 +40,7 @@ extern float **plus; // plus[POWER_LARGEST][101];
 extern float **ghostplus; // plus[POWER_LARGEST][101];
 extern uint32_t **hashes;
 extern float ghosthits;
+extern classstats *classes;
 
 /*
  *

@@ -55,6 +55,8 @@
 #endif
 #endif
 
+#include "statistics_proto.h"
+
 /*
  * forward declarations
  */
@@ -79,6 +81,12 @@ static void stats_init(void);
 static void server_stats(ADD_STAT add_stats, conn *c);
 static void process_stat_settings(ADD_STAT add_stats, void *c);
 static void conn_to_str(const conn *c, char *buf);
+
+/* MIMIR stats */
+#ifdef MIMIR
+static void process_stat_ghostplus(ADD_STAT add_stats, void *c);
+static void process_stat_plus(ADD_STAT add_stats, void *c);
+#endif
 
 
 /* defaults */
@@ -2626,6 +2634,7 @@ static void server_stats(ADD_STAT add_stats, conn *c) {
     STATS_UNLOCK();
 }
 
+
 static void process_stat_settings(ADD_STAT add_stats, void *c) {
     assert(add_stats);
     APPEND_STAT("maxbytes", "%llu", (unsigned long long)settings.maxbytes);
@@ -2772,6 +2781,70 @@ static void process_stats_conns(ADD_STAT add_stats, void *c) {
     }
 }
 
+#ifdef MIMIR
+#include "statistics_proto.h"
+
+
+static void process_stat_plus(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      for (i = 0; i <100; i++) {
+         classstats *cs = &classes[clsid];
+         snprintf(buf, 128, "plus_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", cs->plus[i]);
+      }
+    }
+}
+
+static void process_stat_ghostplus(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "ghosplus_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", ghostplus[clsid][i]);
+      }
+    }
+}
+
+
+/* MIMIR: FiXME
+static void proccess_stat_hrc(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "hrc_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%d", pdf[clsid][i]);
+      }
+    }
+}
+*/
+
+
+void make_unnormalized_cdf_from_plus(float *cdf, int clsid) {
+  int i, j;
+  float pdf[100];
+  memset(pdf, 0, 100 * sizeof(float));
+  memset(cdf, 0, 100 * sizeof(float));
+  float sm = 0;
+
+  for (i = 0; i < 100; i++) {
+    for (j = i; j < 100; j++) {
+      classstats *cs = &classes[clsid];
+      pdf[j] += cs->plus[i];
+    }
+    sm += pdf[i];
+    cdf[i] += sm;
+  }
+}
+#endif
+
+
 static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
     const char *subcommand = tokens[SUBCOMMAND_TOKEN].value;
     assert(c != NULL);
@@ -2796,6 +2869,22 @@ static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
             process_stats_detail(c, tokens[2].value);
         /* Output already generated */
         return ;
+    #ifdef MIMIR
+    /* MIMIR FiXME
+    } else if (strncmp(subcommand, "hrc", 3) == 0) {
+        // send the HRC as a reponse
+        process_stat_hrc(&append_stats, c);
+    } else if (strncmp(subcommand, "ghrc", 4) == 0) {
+        // send the ghost HRC array as a reponse
+        process_stat_ghrc(&append_stats, c);
+    */
+    } else if (strncmp(subcommand, "plus", 4) == 0) {
+        // send the PLUS array as a reponse
+        process_stat_plus(&append_stats, c);
+    } else if (strncmp(subcommand, "ghostplus", 9) == 0) {
+        // send the GHOST PLUS array as a reponse
+        process_stat_ghostplus(&append_stats, c);
+#endif
     } else if (strcmp(subcommand, "settings") == 0) {
         process_stat_settings(&append_stats, c);
     } else if (strcmp(subcommand, "cachedump") == 0) {
@@ -2996,12 +3085,14 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
 		/* MIMIR HACK */
 		/* no clsid is available for the key (since it was a miss), so we use 0 */
 #ifdef MIMIR
- #ifdef MIMIR_BACKGROUND_THREAD
+ #if USE_GHOSTLIST
+  #ifdef MIMIR_BACKGROUND_THREAD
                 mimir_enqueue (MIMIR_TYPE_MISS, 0, hv);
 //                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey);
- #else
+  #else
 		/* This appears faster than actually writing it to a queue in memory! */
                 statistics_miss (0, hv);
+  #endif
  #endif
 #endif
             }

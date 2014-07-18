@@ -36,7 +36,7 @@ class statscollector(object):
     def printStatistics(self, filename=None):
         size = self.size
         s = ""
-        s += "Hits=%d, Misses=%d, Requests=%d\n" % (self.stats.hits, self.stats.misses, self.stats.requests)
+        s += "Hits=%d, Misses=%d, Requests=%d, R=%d\n" % (self.stats.hits, self.stats.misses, self.stats.requests, self.R)
         s += "CDF here meaning, cache of size 1 etc (not stack distances)\n"
         s += "cdf[1]=%.5f cdf[%d]=%.5f\n" % (self.cdf[1], size, self.cdf[size])
         s += "gcdf[1]=%.5f gcdf[%d]=%.5f\n" % (self.gcdf[1], size, self.gcdf[size])

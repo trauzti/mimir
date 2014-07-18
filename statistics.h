@@ -8,6 +8,11 @@
 #define USE_ROUNDER 1
 // #define USE_GLOBAL_FILTER
 
+
+#ifdef FORCE_NO_GHOSTLIST // memcached-mimir-noghost
+#undef USE_GHOSTLIST
+#endif
+
 /* Use background thread? */
 //#define MIMIR_BACKGROUND_THREAD
 
