@@ -2626,6 +2626,7 @@ static void server_stats(ADD_STAT add_stats, conn *c) {
     STATS_UNLOCK();
 }
 
+
 static void process_stat_settings(ADD_STAT add_stats, void *c) {
     assert(add_stats);
     APPEND_STAT("maxbytes", "%llu", (unsigned long long)settings.maxbytes);
@@ -2772,6 +2773,100 @@ static void process_stats_conns(ADD_STAT add_stats, void *c) {
     }
 }
 
+static void proccess_stat_fastplus(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "plus_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", plus[clsid][i]);
+      }
+    }
+}
+
+static void proccess_stat_ghostplus(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "ghostcdf_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", ghostplus[clsid][i]);
+      }
+    }
+}
+
+
+static void proccess_stat_hrc(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "hrc_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%d", pdf[clsid][i]);
+      }
+    }
+}
+
+
+void make_unnormalized_cdf_from_plus(float *cdf, int clsid) {
+  int i, j;
+  float pdf[100];
+  memset(pdf, 0, 100 * sizeof(float));
+  memset(cdf, 0, 100 * sizeof(float));
+  float sm = 0;
+
+  for (i = 0; i < 100; i++) {
+    for (j = i; j < 100; j++) {
+      pdf[j] += plus[clsid][i];
+    }
+    sm += pdf[i];
+    cdf[i] += sm;
+  }
+}
+
+
+void make_unnormalized_cdf_from_pdf(float *cdf, int clsid) {
+  int i;
+  memset(cdf, 0, 100 * sizeof(float));
+  float sm = 0;
+  for (i = 0; i < 100; i++) {
+    sm += pdf[clsid][i];
+    cdf[i] += sm;
+  }
+}
+
+
+static void proccess_stat_cdf(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    float cdf[100];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      make_unnormalized_cdf_from_pdf(cdf, clsid);
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "cdf_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", cdf[i]);
+      }
+    }
+}
+
+static void proccess_stat_pluscdf(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    float cdf[100];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      make_unnormalized_cdf_from_plus(cdf, clsid);
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "cdf_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", cdf[i]);
+      }
+    }
+}
+
 static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
     const char *subcommand = tokens[SUBCOMMAND_TOKEN].value;
     assert(c != NULL);
@@ -2796,6 +2891,18 @@ static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
             process_stats_detail(c, tokens[2].value);
         /* Output already generated */
         return ;
+    } else if (strncmp(subcommand, "hrc", 3) == 0) {
+        // send the HRC as a reponse
+        proccess_stat_hrc(&append_stats, c);
+    } else if (strncmp(subcommand, "ghrc", 4) == 0) {
+        // send the ghost HRC array as a reponse
+        proccess_stat_ghrc(&append_stats, c);
+    } else if (strncmp(subcommand, "plus", 4) == 0) {
+        // send the PLUS array as a reponse
+        proccess_stat_fastplus(&append_stats, c);
+    } else if (strncmp(subcommand, "gplus", 5) == 0) {
+        // send the GHOST PLUS array as a reponse
+        proccess_stat_ghostplus(&append_stats, c);
     } else if (strcmp(subcommand, "settings") == 0) {
         process_stat_settings(&append_stats, c);
     } else if (strcmp(subcommand, "cachedump") == 0) {

@@ -26,16 +26,19 @@ class DictWrapper(dict):
 outputdir = "output"
 Files = None
 Files = os.listdir("output")
-BASESIZE = 700
+BASESIZE = 1000
 algs = {}
 traces = {}
+rvals = {}
 
 class Organizer(dict):
     files = [] # DictWrapper, content),... ,
-    def getall(self, bc=None, trc=None, alg=None, csize=None, gsize=None):
+    def getall(self, R=None, bc=None, trc=None, alg=None, csize=None, gsize=None):
         ret = []
         for dw in self.files:
             use = True
+            if R and dw.R != R:
+                use = False
             if bc and dw.bc != bc:
                 use = False
             if alg and dw.alg != alg:
@@ -58,31 +61,36 @@ def main():
     for fn in Files:
         lines = open("%s/%s" % (outputdir, fn), "r").readlines()
         # filename: algorithm_trace_buckets_cachesize_ghostlistsize.(histogram|stats)
-        fm = re.match("(?P<alg>\w+)_(?P<trc>\w+)_(?P<bc>\d+)_(?P<csize>\d+)_(?P<gsize>\d+)\.(?P<type>\w+)", fn)
+        fm = re.match("(?P<alg>\w+)_(?P<trc>\w+)_(?P<bc>\d+)_(?P<csize>\d+)_(?P<gsize>\d+)_R(?P<R>\d+)\.(?P<type>\w+)", fn)
         d1 = DictWrapper(fm.groupdict())
         if d1.type == "stats":
-            m1 = re.match("Hits=(?P<hits>\d+), Misses=(?P<misses>\d+), Requests=(?P<requests>\d+)", lines[0])
+            m1 = re.match("Hits=(?P<hits>\d+), Misses=(?P<misses>\d+), Requests=(?P<requests>\d+), R=(?P<R>\d+)", lines[0])
             d2 = DictWrapper(m1.groupdict())
             d1.update(d2)
             algs[d1.alg] = 1
+            rvals[d1.R] = 1
             traces[d1.trc] = 1
+            d1.fn = fn
             histogramlines = open("%s/%s" % (outputdir, fn.replace("stats", "histogram") ), "r").readlines()
             d1.histogram = [(int(x[0]), float(x[1])) for x in map(lambda x:x.split(" "), histogramlines)]
             o.files.append(d1)
         elif d1.type == "histogram":
+            pass
+        elif d1.type == "ghoststats":
             pass
         else:
             assert 0
     print len(o.files)
     # returns the diffs between the CDFs
     # returns the  MAE between the CDFs
-    def makediffs(X, Y, hX, hY):
+    def makediffs(X, Y, hX, hY, limit=0):
         diffs = []
         for i in xrange(len(X)):
             x = X[i]
             y = Y[i]
             delta = abs(y - hY[x])
-            diffs.append(delta)
+            if x >= limit:
+                diffs.append(delta)
         return diffs
 
     def calculateMAE(diffs):
@@ -91,31 +99,41 @@ def main():
 
     #BASESIZE = 1500
     #BASESIZE = 700
+    fR = open("R_mae_gmae.txt", "w")
     for alg in algs.keys():
         for trc in traces.keys():
-            print "Generating plot for %s,%s" % (alg, trc)
-            plt.clf()
-            fig, ax = plt.subplots()
-            ores = o.getall(alg=alg, trc=trc)
-            ores.sort(key=lambda x: int(x.csize))
-            X = [int(x.csize) for x in ores]
-            Y = [float(x.hits) / float(x.requests) for x in ores]
-            print BASESIZE, ores
-            histogram = filter(lambda x:int(x.csize) == BASESIZE, ores)[0].histogram
-            hX = [z[0] for z in histogram]
-            hY = [z[1] for z in histogram]
-            diffs = makediffs(X, Y, hX, hY)
-            #print diffs
-            print "maxdiff = %.1f%%, mindiff = %.1%%f, MAE=%.1f%%\n" % (100 * max(diffs), 100 * min(diffs), 100 * calculateMAE(diffs))
-            #print alg, [(x.csize, x.hits) for x in ores]
-            plt.plot(X, Y, 'ro')
-            plt.plot(hX, hY)
-            fpref = "images/%s_%s_%d" % (alg, trc, BASESIZE)
-            ax.set_ylabel('Cumulative hit rate')
-            ax.set_xlabel('Cache size (# items)')
-            ax.set_title('Algorithm: %s, trace: %s and base from %d items ' % (alg, trc, BASESIZE))
-            plt.savefig('%s.png' % fpref, format='png')
-            plt.savefig('%s.eps' % fpref, format='eps', dpi=1000)
+            for R in sorted(rvals.keys()):
+                print "Generating plot for %s,%s,R=%s" % (alg, trc, R)
+                plt.clf()
+                fig, ax = plt.subplots()
+                ores = o.getall(alg=alg, trc=trc, R=R)
+                ores.sort(key=lambda x: int(x.csize))
+                X = [int(x.csize) for x in ores]
+                Y = [float(x.hits) / float(x.requests) for x in ores]
+                print BASESIZE, ores
+                histogram = filter(lambda x:int(x.csize) == BASESIZE, ores)[0].histogram
+                hX = [z[0] for z in histogram]
+                hY = [z[1] for z in histogram]
+                diffs = makediffs(X, Y, hX, hY)
+                #print diffs
+                MAE = 100 * calculateMAE(diffs)
+                print "maxdiff = %.1f%%, mindiff = %.1%%f, MAE=%.1f%%\n" % (100 * max(diffs), 100 * min(diffs), MAE)
+                #print diffs
+                gdiffs = makediffs(X, Y, hX, hY, limit=BASESIZE)
+                gMAE = 100 * calculateMAE(gdiffs)
+                print "Ghostlist MAE: %s" % (gMAE)
+                #print alg, [(x.csize, x.hits) for x in ores]
+                plt.plot(X, Y, 'ro')
+                plt.plot(hX, hY)
+                fpref = "images/%s_%s_%d_R%s" % (alg, trc, BASESIZE, R)
+                ax.set_ylabel('Cumulative hit rate')
+                ax.set_xlabel('Cache size (# items)')
+                ax.set_title('Alg=%s,trace=%s,base=%d,R=%s,MAE=%.1f%%,gMAE=%.1f%%' % (alg, trc, BASESIZE, R, MAE, gMAE))
+
+                fR.write("%s\t%s\t%s\n" % (R, MAE, gMAE))
+                plt.savefig('%s.png' % fpref, format='png')
+                plt.savefig('%s.eps' % fpref, format='eps', dpi=1000)
+    fR.close()
 
 
 
@@ -193,7 +211,6 @@ def main():
     #plt.show()
 
 if __name__ == "__main__":
-    global BASESIZE, Files
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--outputdir", help="The output directory to use", type=str, default="", required=False)
     parser.add_argument("-b", "--basesize", help="The basesize to use", type=int, default=700, required=False)

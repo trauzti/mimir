@@ -60,9 +60,14 @@ class ghostclass:
 
         if found:
             if end > self.capacity:
-                # This is overestimating values from [capacity,...,1.5*capacity]
-                # hence scale down
-                self.ghosthits += self.R * (1.0 - FPP_RATE) * (self.capacity - start) / (end - start)
+                if start < self.capacity:
+                    # This is overestimating values from [capacity,...,1.5*capacity]
+                    # hence scale down
+                    x = self.R * (1.0 - FPP_RATE) * (end - self.capacity + 0.0) / (end - start + 0.0)
+                    assert x >= 0
+                    self.ghosthits += x
+                else:
+                    self.ghosthits += 0  # hit at stack distance greater than the capacity
             else:
                 self.ghosthits += self.R * (1.0 - FPP_RATE)
             val = self.R * ( 1.0 / (end - start) ) * (1.0 - FPP_RATE)
@@ -114,11 +119,18 @@ class ghostclass:
     def make_pdf(self):
         pass
 
-    def printStatistics(self):
+    def printStatistics(self, filename=None):
         self.printCounters()
 
         realghosthits = sum([self.pdf[i] for i in xrange(self.capacity)])
-        print "Rignored=%d vs Rpassed=%d" % (self.Rignored, self.Rpassed)
-        print "ghosthits=%.3f , realghosthits=%.3f" % (self.ghosthits, realghosthits)
-        print "ghostmisses=%d" % self.ghostmisses
-        print "rotations=%d" % self.rotations
+        s = "Rignored=%d vs Rpassed=%d\n" % (self.Rignored, self.Rpassed)
+        s += "ghosthits=%.3f , realghosthits=%.3f\n" % (self.ghosthits, realghosthits)
+        s += "ghostmisses=%d\n" % self.ghostmisses
+        s += "rotations=%d\n" % self.rotations
+
+        if filename:
+            f = open(filename, "w")
+            f.write(s)
+            f.close()
+        else:
+            print s

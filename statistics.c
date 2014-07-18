@@ -265,9 +265,10 @@ void update_mapped_plus(int clsid, int start, int end) {
 
   // just to check if the threads are the bottleneck
   // XXX YV: removed the 'tid' index to the plus array. threads may become a bottleneck again
+  // TS: put the tid val again
   //int tid = get_thread_id();
-  classes[clsid].plus[start] += val;
-  classes[clsid].plus[end] -= val;
+  classes[tid].plus[start] += val;
+  classes[tid].plus[end] -= val;
 
   // equivalent to:
   // for (int i = start; i < end; i++) {
