@@ -229,8 +229,10 @@ item *do_item_alloc(char *key, const size_t nkey, const int flags,
     it->it_flags = settings.use_cas ? ITEM_CAS : 0;
     it->nkey = nkey;
 #ifdef MIMIR
-    //it->activity = 0;
-    //it->mimir_hash = MurmurHash3_x86_32(key, nkey);
+    //it->activity = 0; // This is initialized in statistics_set
+#if USE_GHOSTLIST
+    it->mimir_hash = MurmurHash3_x86_32(key, nkey);
+#endif
 #endif
     it->nbytes = nbytes;
     memcpy(ITEM_key(it), key, nkey);
@@ -320,16 +322,18 @@ static void item_unlink_q(item *it) {
 
     /* MIMIR HACK */
 #ifdef MIMIR
- #ifdef MIMIR_BACKGROUND_THREAD
-    /* Use background thread */
-    mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
- #else
+ #if USE_GHOSTLIST
+  #ifdef MIMIR_BACKGROUND_THREAD
+     /* Use background thread */
+     mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
+  #else
     /* May be faster to just bypass memory */
     //statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
-    //if (it->mimir_hash == 0UL)
-    //     it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
-    //if ((it->mimir_hash % R) == 0)
-    statistics_evict (it->slabs_clsid, it->mimir_hash, it);
+    if (it->mimir_hash == 0UL)
+        it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
+    if ((it->mimir_hash % R) == 0)
+        statistics_evict (it->slabs_clsid, it->mimir_hash, it);
+  #endif
  #endif
 #endif
 

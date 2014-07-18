@@ -2773,6 +2773,10 @@ static void process_stats_conns(ADD_STAT add_stats, void *c) {
     }
 }
 
+#ifdef MIMIR
+#include "statistics_proto.h"
+
+
 static void proccess_stat_fastplus(ADD_STAT add_stats, void *c) {
     assert(add_stats);
     int i, clsid;
@@ -2866,6 +2870,7 @@ static void proccess_stat_pluscdf(ADD_STAT add_stats, void *c) {
       }
     }
 }
+#endif
 
 static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
     const char *subcommand = tokens[SUBCOMMAND_TOKEN].value;
@@ -2891,6 +2896,7 @@ static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
             process_stats_detail(c, tokens[2].value);
         /* Output already generated */
         return ;
+#ifdef MIMIR
     } else if (strncmp(subcommand, "hrc", 3) == 0) {
         // send the HRC as a reponse
         proccess_stat_hrc(&append_stats, c);
@@ -2903,6 +2909,7 @@ static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
     } else if (strncmp(subcommand, "gplus", 5) == 0) {
         // send the GHOST PLUS array as a reponse
         proccess_stat_ghostplus(&append_stats, c);
+#endif
     } else if (strcmp(subcommand, "settings") == 0) {
         process_stat_settings(&append_stats, c);
     } else if (strcmp(subcommand, "cachedump") == 0) {
@@ -3103,12 +3110,14 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
 		/* MIMIR HACK */
 		/* no clsid is available for the key (since it was a miss), so we use 0 */
 #ifdef MIMIR
- #ifdef MIMIR_BACKGROUND_THREAD
+ #if USE_GHOSTLIST
+  #ifdef MIMIR_BACKGROUND_THREAD
                 mimir_enqueue (MIMIR_TYPE_MISS, 0, hv);
 //                mimir_enqueue_key (MIMIR_TYPE_MISS, 0, key, nkey);
- #else
+  #else
 		/* This appears faster than actually writing it to a queue in memory! */
                 statistics_miss (0, hv);
+  #endif
  #endif
 #endif
             }
