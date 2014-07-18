@@ -267,6 +267,7 @@ void update_mapped_plus(int clsid, int start, int end) {
   // XXX YV: removed the 'tid' index to the plus array. threads may become a bottleneck again
   // TS: put the tid val again
   //int tid = get_thread_id();
+  int tid = get_thread_id();
   classes[tid].plus[start] += val;
   classes[tid].plus[end] -= val;
 
@@ -301,8 +302,20 @@ void statistics_hit(int clsid, item *e) {
 }
 
 void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
-  if ((hv % R) != 0) return; // sampling
+#if USE_ROUNDER
+  if (likely (e != NULL))
+  {
+	  int last = classes[clsid].stail;
+	  if (e->activity < last) {
+	    e->activity = last;
+	  }
+
+	  remove_from_bucket(clsid, e->activity);
+  }
+#endif
+
 #if USE_GHOSTLIST
+  if ((hv % R) != 0) return; // sampling
   int tid = get_thread_id();
   //char *key = ITEM_key(e);
   //int nkey = e->nkey;
@@ -333,26 +346,13 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
   }
 #endif
 
-
-#if USE_ROUNDER
-  if (likely (e != NULL))
-  {
-	  int last = classes[clsid].stail;
-	  if (e->activity < last) {
-	    e->activity = last;
-	  }
-
-	  remove_from_bucket(clsid, e->activity);
-  }
-#endif
 }
 
 
 
 void statistics_miss(unsigned int clsid, unsigned int hv) {
-  if ( (hv % R) != 0) return; // sampling
-
 #if USE_GHOSTLIST
+  if ( (hv % R) != 0) return; // sampling
   int tid = get_thread_id();
   // for memcached, reuse the hash value from the hash table! done :-)
   dablooms_hash_func_with_hv(cfs[0], hv, hashes[tid]);

@@ -229,8 +229,8 @@ item *do_item_alloc(char *key, const size_t nkey, const int flags,
     it->it_flags = settings.use_cas ? ITEM_CAS : 0;
     it->nkey = nkey;
 #ifdef MIMIR
-    it->activity = 0;
-    it->mimir_hash = MurmurHash3_x86_32(key, nkey);
+    //it->activity = 0;
+    //it->mimir_hash = MurmurHash3_x86_32(key, nkey);
 #endif
     it->nbytes = nbytes;
     memcpy(ITEM_key(it), key, nkey);
@@ -326,10 +326,10 @@ static void item_unlink_q(item *it) {
  #else
     /* May be faster to just bypass memory */
     //statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
-    if (it->mimir_hash == 0UL)
-         it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
-    if ((it->mimir_hash % R) == 0)
-         statistics_evict (it->slabs_clsid, it->mimir_hash, it);
+    //if (it->mimir_hash == 0UL)
+    //     it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
+    //if ((it->mimir_hash % R) == 0)
+    statistics_evict (it->slabs_clsid, it->mimir_hash, it);
  #endif
 #endif
 
