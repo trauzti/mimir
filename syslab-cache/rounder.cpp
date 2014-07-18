@@ -32,9 +32,10 @@ void rounder::Hit(item *it, int dist /* =-1 */) {
 void rounder::Miss(const char *key) {
   ++misses;
   ++requests;
+  unsigned int hv = 0; 
 // Ymir, trying to optimize
 //	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
-  unsigned int hv = *(unsigned long *)(&key[strlen(key)-4]);
+//  unsigned int hv = *(unsigned long *)(&key[strlen(key)-4]);
   statistics_miss(0, hv);
 }
 
@@ -46,7 +47,7 @@ void rounder::Set(item *it) {
 // this item was evicted from the main cache
 void rounder::Evict(item *it) {
   const char *key = it->key;
-  unsigned int hv = *(unsigned long *)(&key[strlen(key)-4]);
+  unsigned int hv = 0; 
 // Ymir, trying to optimize
 //	unsigned int hv = MurmurHash3_x86_32(key, strlen(key));
   statistics_evict(0, hv, it);
