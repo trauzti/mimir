@@ -3,7 +3,8 @@
 
 
 
-#define USE_GHOSTLIST 1
+//#define USE_GHOSTLIST 1
+#define USE_GHOSTLIST 0
 #define USE_ROUNDER 1
 // #define USE_GLOBAL_FILTER
 
