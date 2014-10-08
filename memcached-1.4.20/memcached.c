@@ -86,6 +86,8 @@ static void conn_to_str(const conn *c, char *buf);
 #ifdef MIMIR
 static void process_stat_ghostplus(ADD_STAT add_stats, void *c);
 static void process_stat_plus(ADD_STAT add_stats, void *c);
+static void process_stat_pluscdf(ADD_STAT add_stats, void *c);
+void make_unnormalized_cdf_from_plus(float *cdf, int clsid);
 #endif
 
 
@@ -2798,6 +2800,20 @@ static void process_stat_plus(ADD_STAT add_stats, void *c) {
     }
 }
 
+static void process_stat_pluscdf(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    int i, clsid;
+    char buf[128];
+    float cdf[100];
+    for (clsid = 0; clsid <= get_power_largest(); clsid++) {
+      make_unnormalized_cdf_from_plus(cdf, clsid);
+      for (i = 0; i <100; i++) {
+         snprintf(buf, 128, "cdf_%d_%d", clsid, i);
+         APPEND_STAT(buf, "%f", cdf[i]);
+      }
+    }
+}
+
 static void process_stat_ghostplus(ADD_STAT add_stats, void *c) {
     assert(add_stats);
     int i, clsid;
@@ -2878,6 +2894,9 @@ static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
         // send the ghost HRC array as a reponse
         process_stat_ghrc(&append_stats, c);
     */
+    } else if (strncmp(subcommand, "pluscdf", 7) == 0) {
+        // send the PLUS array as a reponse
+        process_stat_pluscdf(&append_stats, c);
     } else if (strncmp(subcommand, "plus", 4) == 0) {
         // send the PLUS array as a reponse
         process_stat_plus(&append_stats, c);

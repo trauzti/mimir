@@ -282,7 +282,6 @@ void update_mapped_plus(int clsid, int start, int end) {
 
 
 void statistics_hit(int clsid, item *e) {
-  // TODO: add to concurrent queue and let the background thread do this work
 #if USE_ROUNDER
   classstats *cs = &classes[clsid];
   age_if_full(clsid);
