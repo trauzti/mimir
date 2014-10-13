@@ -22,12 +22,20 @@ typedef struct interval {
   int end;
 } interval_t;
 
+typedef struct
+{
+  int start;
+  double mid;
+  int end;
+} dist;
+
 typedef struct _classstats {
 	int stail;
 	unsigned int *buckets;
 	float *plus;
 //	float *ghostplus;
 } classstats;
+typedef unsigned int act_t;
 
 
 extern int failures;
@@ -41,6 +49,9 @@ extern float **ghostplus; // plus[POWER_LARGEST][101];
 extern uint32_t **hashes;
 extern float ghosthits;
 extern classstats *classes;
+extern double *global_plus;
+extern int *accurate_pdf;
+extern int statistics_hits, statistics_misses;
 
 /*
  *
@@ -65,9 +76,11 @@ void statistics_miss(unsigned int clsid, unsigned int hv);
 void statistics_evict(unsigned int clsid, unsigned int hv, item *e);
 void remove_from_bucket(int clsid, int activity);
 int add_to_head(int clsid);
+int get_true_stackdistance(item *it);
 interval_t get_stack_distance(int clsid, int activity);
 
 void print_ghosthits();
+int print_buckets(int clsid);
 
 /** Background thread **/
 extern pthread_t mimir_thread_id;
@@ -76,5 +89,12 @@ extern int start_mimir_thread(void);
 int mimir_enqueue(unsigned int type, unsigned int keyhash, unsigned int clsid);
 int mimir_enqueue_key(unsigned int type, unsigned int clsid, char *key, size_t keylen);
 
+void print_activecount();
+void get_stackdistance(item *it, dist *d);
+void update_pdf(dist *d);
+void statistics_sanitycheck();
 
-#endif
+
+
+#endif /* STATISTICS_H */
+

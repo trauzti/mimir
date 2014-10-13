@@ -3,10 +3,12 @@
 
 
 
-//#define USE_GHOSTLIST 1
-#define USE_GHOSTLIST 0
+#define USE_GHOSTLIST 1
+//#define USE_GHOSTLIST 0
 #define USE_ROUNDER 1
 // #define USE_GLOBAL_FILTER
+#define USE_GLOBAL_PLUS 1
+#define DO_SANITY 0
 
 
 #ifdef FORCE_NO_GHOSTLIST // memcached-mimir-noghost

@@ -2613,7 +2613,7 @@ static void proccess_stat_fastplus(ADD_STAT add_stats, void *c) {
     for (clsid = 0; clsid <= get_power_largest(); clsid++) {
       for (i = 0; i <100; i++) {
          snprintf(buf, 128, "plus_%d_%d", clsid, i);
-         APPEND_STAT(buf, "%f", plus[clsid][i]);
+         //APPEND_STAT(buf, "%f", plus[clsid][i]);
       }
     }
 }
@@ -2625,7 +2625,7 @@ static void proccess_stat_ghostplus(ADD_STAT add_stats, void *c) {
     for (clsid = 0; clsid <= get_power_largest(); clsid++) {
       for (i = 0; i <100; i++) {
          snprintf(buf, 128, "ghostcdf_%d_%d", clsid, i);
-         APPEND_STAT(buf, "%f", ghostplus[clsid][i]);
+         //APPEND_STAT(buf, "%f", ghostplus[clsid][i]);
       }
     }
 }

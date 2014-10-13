@@ -87,6 +87,8 @@ static void conn_to_str(const conn *c, char *buf);
 static void process_stat_ghostplus(ADD_STAT add_stats, void *c);
 static void process_stat_plus(ADD_STAT add_stats, void *c);
 static void process_stat_pluscdf(ADD_STAT add_stats, void *c);
+static void process_stat_globalcdf(ADD_STAT add_stats, void *c);
+static void process_stat_mattson(ADD_STAT add_stats, void *c);
 void make_unnormalized_cdf_from_plus(float *cdf, int clsid);
 #endif
 
@@ -2826,6 +2828,68 @@ static void process_stat_ghostplus(ADD_STAT add_stats, void *c) {
     }
 }
 
+static void process_stat_globalcdf(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    struct thread_stats thread_stats;
+    threadlocal_stats_aggregate(&thread_stats);
+    struct slab_stats slab_stats;
+    slab_stats_aggregate(&thread_stats, &slab_stats);
+    printf("get_cmds=%llu\n", (unsigned long long)thread_stats.get_cmds);
+    printf("get_hits=%llu\n", (unsigned long long)slab_stats.get_hits);
+    printf("get_misses=%llu\n", (unsigned long long)thread_stats.get_misses);
+    FILE *fp = fopen("cdf.txt", "w");
+    double pdf[100000];
+    double cdf[100000];
+    memset(pdf, 0, 100000 * sizeof(double));
+    double sm = 0;
+    int i, j;
+    sm = global_plus[0];
+    cdf[0] = global_plus[0];
+
+
+    for (i = 0; i < 100000; i++) {
+      for (j = i; j < 100000; j++) {
+        pdf[j] += global_plus[i] ;
+      }
+      sm += pdf[i];
+      cdf[i] = sm;
+    }
+
+    printf("sm, hitrate, sm/get_cmds=(%lf, %lf, %lf)\n", sm, (double) slab_stats.get_hits / thread_stats.get_cmds, sm / thread_stats.get_cmds);
+
+    fprintf(fp, "#totalitems=?\n#cdf=[\n");
+    for (i = 0; i <100000; i++) {
+       fprintf(fp, "%lf\n", cdf[i] / thread_stats.get_cmds);
+    }
+    fclose(fp);
+}
+
+static void process_stat_mattson(ADD_STAT add_stats, void *c) {
+    assert(add_stats);
+    struct thread_stats thread_stats;
+    threadlocal_stats_aggregate(&thread_stats);
+    struct slab_stats slab_stats;
+    slab_stats_aggregate(&thread_stats, &slab_stats);
+    FILE *fp = fopen("mattson.txt", "w");
+    double cdf[100000];
+    double sm = 0;
+    int i;
+
+    for (i = 0; i < 100000; i++) {
+      sm += accurate_pdf[i];
+      cdf[i] = sm;
+    }
+
+
+    printf("Mattson: sm, sm/get_cmds=(%lf,%lf)\n", sm, sm / thread_stats.get_cmds);
+
+    fprintf(fp, "#totalitems=?\n#cdf=[\n");
+    for (i = 0; i <100000; i++) {
+       fprintf(fp, "%lf\n", cdf[i] / thread_stats.get_cmds);
+    }
+    fclose(fp);
+}
+
 
 /* MIMIR: FiXME
 static void proccess_stat_hrc(ADD_STAT add_stats, void *c) {
@@ -2894,6 +2958,12 @@ static void process_stat(conn *c, token_t *tokens, const size_t ntokens) {
         // send the ghost HRC array as a reponse
         process_stat_ghrc(&append_stats, c);
     */
+    } else if (strncmp(subcommand, "globalcdf", 9) == 0) {
+        // send the PLUS array as a reponse
+        process_stat_globalcdf(&append_stats, c);
+    } else if (strncmp(subcommand, "mattson", 7) == 0) {
+        // send the PLUS array as a reponse
+        process_stat_mattson(&append_stats, c);
     } else if (strncmp(subcommand, "pluscdf", 7) == 0) {
         // send the PLUS array as a reponse
         process_stat_pluscdf(&append_stats, c);

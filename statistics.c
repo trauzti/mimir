@@ -16,8 +16,16 @@
 #include "statistics_proto.h"
 #include "murmur3_hash.h"
 
+#define printfUG_PRINT 0
 
 int R = 100;
+float valsum = 0.0;
+static size_t hits, misses, requests, PER_BIN;
+static double *PLUS, *CDF;
+static int *BUCKETS;
+unsigned int T = 0;
+int TOTAL_CACHE_SIZE=0, BITS=0;
+pthread_mutex_t age_lock, st_lock;
 
 #ifdef SYSLAB_CACHE
 const int get_size(int clsid) {
@@ -67,6 +75,10 @@ counting_bloom_t **cfs;
 float ghosthits;
 unsigned int *cfcounters;
 int perfilter, ghostlistcapacity;
+#if USE_GLOBAL_PLUS
+double *global_plus;
+#endif
+int *accurate_pdf;
 
 
 
@@ -102,64 +114,45 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 
 
 void statistics_init(int numbuckets, int mR) {
-#if USE_ROUNDER
-  classstats *cs;
+#if USE_GLOBAL_PLUS
+  global_plus = calloc(100000, sizeof(double));
+  accurate_pdf = calloc(100000, sizeof(int));
+#endif
+  TOTAL_CACHE_SIZE = 50000;
+  printf("statistics_init!\n");
+  pthread_mutex_init(&st_lock, NULL);
+  pthread_mutex_init(&age_lock, NULL);
+  int i;
+  misses = 0;
+  hits = 0;
+  requests = 0;
+  PER_BIN = TOTAL_CACHE_SIZE / numbuckets;
+  T = 0;
   B = numbuckets;
-  printf ("MIMIR loading with %d buckets\n", numbuckets);
 
-  printf("sizeof(item)=%d\n", (int) sizeof(item));
-  failures = 0;
-  classes = (classstats *) calloc(POWER_LARGEST, sizeof(classstats));
-  ghostplus = (float **) calloc(5, sizeof(float *));
-  int clsid;
-  for (clsid = 0; clsid < POWER_LARGEST; clsid++) {
-    cs = &classes[clsid];
-    cs->stail = 0;
-    cs->buckets = (unsigned int *)calloc(B, sizeof(unsigned int));
-    cs->plus = (float *) calloc(101, sizeof( float )); // so update_plus can decrement plus[100]
+  printf("Initialized statistics:\n"
+      "(TOTAL_CACHE_SIZE, B, PER_BIN )=(%u,%d,%zu)\n",
+      TOTAL_CACHE_SIZE, B, PER_BIN);
+
+
+  CDF = (double *) calloc(TOTAL_CACHE_SIZE + 1, sizeof(double));
+  PLUS = (double *) calloc(TOTAL_CACHE_SIZE + 1, sizeof(double));
+  BUCKETS = (int *) calloc(B+1, sizeof(int));
+  for (i = 0; i <= B; i++)
+  {
+    assert (BUCKETS[i] == 0);
   }
-  int t;
-  for (t = 0; t <= 4; t++) {
-    ghostplus[t] = (float *) calloc(101, sizeof( float ));
+  //statistics_sanitycheck();
+}
+
+int bucketsum() {
+  int i, j,sm = 0;
+  for (i = 0; i< B; i++){
+    j = BUCKETS[ (T + i) % (B + 1)];
+    assert (j >= 0);
+    sm += j;
   }
-#endif
-#if USE_GHOSTLIST
-  R = mR;
-  printf ("Using ghost filter.\n");
-  printf (" - setting the sampling rate. R=%d\n", R);
-  HeadFilter = 0;
-  ghosthits = 0;
-  cfs = (counting_bloom_t **) malloc(3 * sizeof(counting_bloom_t *));
-  cfcounters = (unsigned int *) calloc(3, sizeof(unsigned int));
-  int minsize = (int) ( sizeof(item) + settings.chunk_size);
-  printf("min total item size=%d\n",  minsize);
-#ifdef SYSLAB_CACHE
-  ghostlistcapacity = 5000; // XXX HAAAACK
-#else
-  ghostlistcapacity = settings.maxbytes / minsize;
-#endif
-  perfilter = ghostlistcapacity / 2;
-  printf(" - ghostlistcapacity=%d\n", ghostlistcapacity);
-  printf(" - perfilter=%d\n", perfilter);
-#if USE_GLOBAL_FILTER
-  cfs_global = new_counting_bloom(perfilter, FPP_RATE, "/dev/shm/mimir-cfs-global.cf");
-  cfs_global_counter = 0;
-#endif
-  int cfid = 0;
-  for(; cfid < 3; cfid++) {
-    char fname[128];
-    /* Use shared memory instead of disk for speed */
-    sprintf(fname, "/dev/shm/mimir-cf%d.cf", cfid);
-    cfs[cfid] = new_counting_bloom(perfilter, FPP_RATE, fname);
-  }
-  int tid = 0;
-  hashes = (uint32_t **) calloc(settings.num_threads + 1, sizeof(uint32_t *));
-  for (; tid <= settings.num_threads; tid++) {
-    hashes[tid] = (uint32_t *) calloc(cfs[0]->nfuncs, sizeof(uint32_t));
-  }
-#else
-  printf ("Ghost list disabled.\n");
-#endif
+  return sm;
 }
 
 
@@ -181,39 +174,81 @@ void statistics_terminate() {
 
 // er mark breytt einhvers stadar?
 bool age_if_full(int clsid) {
-  classstats *cs = &classes[clsid];
-  int last = cs->stail % B;
-  int head = (cs->stail + B - 1) % B;
-  unsigned int head_count = GET_count(cs->buckets[head]);
-  unsigned int last_count = GET_count(cs->buckets[last]);
-  while (head_count >= (int) (get_size(clsid) / (B +0.0))) {
-    int k = (last + 1) % B;
-    unsigned int oldcm = cs->buckets[k];
-    // when is the mark for the last+1 bucket cleared
-    // no thread will execute this loop more than once
-    // this is lock free => no thread will be stuck here for an indefinite amount of time
-    while (!GET_mark(oldcm)) {
-      unsigned int newcm = GET_count_and_mark(GET_count(oldcm) + last_count, 1);
-      if (atomic_set_and_mark(&cs->buckets[k], oldcm, newcm)) {
-        cs->buckets[last] = 0x0; // set both the value and the mark to 0
-        ++cs->stail;
-      }
-      oldcm = cs->buckets[k]; // other threads will find that mark is 1 and exit
-      // only one thread will be able to increment the tail
-    }
-    return true;
+  if (BUCKETS[(T + B - 1) % (B+1)] < PER_BIN)
+  {
+    return false;
   }
-  return false;
+  if(0!=pthread_mutex_trylock(&age_lock))
+  {
+    return false;
+  }
+  printf("Performing aging\n");
+  statistics_sanitycheck();
+#if DO_SANITY
+  int smbefore, smafter;
+  smbefore = bucketsum();
+#endif
+  BUCKETS[ (T + B) % (B + 1)] = 0; // New top bin to zero
+  T++;
+  assert (BUCKETS[(T + B - 1) % (B+1)] == 0);
+  //BUCKETS[ T % (B + 1)] += BUCKETS[(T-1) % (B+1)]; // Merge bottom bin with old bottom bin
+  __sync_fetch_and_add(&BUCKETS[T % (B + 1)], BUCKETS[(T-1) % (B+1)]);
+  //TODO: while (!__sync_bool_compare_and_swap());
+  printf("Performed aging, range is now [%u,%u]\n", T, T + B - 1);
+#if DO_SANITY
+  smafter = bucketsum();
+  assert (smbefore == smafter);
+#endif
+  statistics_sanitycheck();
+  pthread_mutex_unlock(&age_lock);
+
+  return true;
+}
+
+int print_buckets(int clsid) {
+  int bucketsum = 0;
+  int i;
+  classstats *cs = &classes[clsid];
+  printf("buckets=[");
+  for (i = 0; i < B; i++) {
+    int bIndex = (cs->stail + i) % B;
+    unsigned int count = GET_count(cs->buckets[bIndex]);
+    bucketsum += count;
+    printf("%d,", count);
+  }
+  printf("]\n");
+
+  return bucketsum;
+}
+
+void statistics_sanitycheck() {
 }
 
 
 // use: maps the real start and the real end to [0,100]
 // post: the plus array has been updated correctly
 void update_plus(int clsid, int realstart, int realend) {
+  assert(realstart < realend);
   double sz = 0.0 + get_size(clsid);
-  //printf("realstart, realend, sz=(%d,%d,%lf)\n", realstart, realend, sz);
   int start = (int) (100.0 * (realstart / sz)); // floor
   int end = (int) (0.5 + ( 100.0 *  (realend / sz))); // ceil
+#if USE_GLOBAL_PLUS
+  int count = realend - realstart;
+  double val = 1.0 / (0.0 + count);
+  valsum += 1;
+  global_plus[realstart] += val;
+  global_plus[realend] -= val;
+
+  assert (realstart >=0 );
+#if printfUG_PRINT
+  int bucketsum = print_buckets(clsid);
+
+  assert (realend <= bucketsum );
+#endif
+#if printfUG_PRINT
+  printf("realstart, realend, valsum, bucketsum==(%d,%d,%f,%d)\n", realstart, realend, valsum, bucketsum);
+#endif
+#endif
 
   if (end == start) {
     ++end;
@@ -280,144 +315,164 @@ void update_mapped_plus(int clsid, int start, int end) {
   // }
 }
 
-
-void statistics_hit(int clsid, item *e) {
-#if USE_ROUNDER
-  classstats *cs = &classes[clsid];
-  age_if_full(clsid);
-
-  int last = cs->stail;
-  if (e->activity < last) {
-    e-> activity = last;
+void print_cache_contents(int clsid) {
+  item *search = get_head(clsid);
+  for(;search != NULL; search=search->next)
+  {
+    //printf("(%s,%u), ", ITEM_key(search), search->activity);
+    printf("%u, ", search->activity);
   }
+}
 
-  interval_t interval = get_stack_distance(clsid, e->activity);
+// post: the real stack distance of n is in [d->start,...,d->end-1]
+//
+void get_stackdistance(item *it, dist *d)
+{
+  act_t i;
+  d->start = 0;
+  act_t a=it->activity;
 
-  update_plus(clsid, interval.start, interval.end);
+  if(a < T)
+    a=T;
 
-  remove_from_bucket(clsid, e->activity);
-  // we only track the tail and calculate the head if we need it
-  int head = add_to_head(clsid);
-  e->activity = head;
+  for (i = T + B - 1; i >= T ; --i)
+  {
+    if (i == a) // go down until we hit the correct region
+    {
+      break;
+    }
+    d->start += BUCKETS[i % (B+1)];
+  }
+  assert (i >= T);
 
+  d->end = d->start + BUCKETS[i % (B+1)];
+  d->mid = (d->end - 1 + d->start) / 2.0;
+#if DO_SANITY
+  printf("start is %d, end is %d, T is %u, B is %u, activity is %u \n",d->start,d->end, T, B, it->activity);
+  int t = get_true_stackdistance(it);
+  printf("true stackdistance is %d\n,", t);
+  assert( d->start <= t);
+  assert( t < d->end);
+  UDB("Returning stack distance range (start,end)=[%d,%d] (mid=%f) for activity %d\n", d->start, d->end, d->mid, it->activity);
+  assert ( 0 <= d->start && d->start <= TOTAL_CACHE_SIZE );
+  assert ( 0 <= d->end && d->end <= TOTAL_CACHE_SIZE );
+  assert ( d->start < d->end );
 #endif
 }
 
-void statistics_evict(unsigned int clsid, unsigned hv, item *e) {
-#if USE_ROUNDER
-  if (likely (e != NULL))
+int get_true_stackdistance(item *it)
+{
+  mutex_lock(&cache_lock);
+  item *search;
+  int j=0;
+#if printfUG_PRINT
+  printf("head and down: ");
+#endif
+  search = get_head(it->slabs_clsid);
+  for(;search!=it && search !=0;search=search->next)
   {
-	  int last = classes[clsid].stail;
-	  if (e->activity < last) {
-	    e->activity = last;
-	  }
 
-	  remove_from_bucket(clsid, e->activity);
+#if printfUG_PRINT
+    printf("(%s,%u), ", ITEM_key(search), search->activity);
+#endif
+    if (search->next != NULL) {
+      if (search->activity < search->next->activity) {
+#if printfUG_PRINT
+        printf("(%s,%u)\n", ITEM_key(search->next), search->next->activity);
+        fflush(stdout);
+#endif
+        // Perhaps this happens when memcached skips updating a fresh item to the head
+        //print_cache_contents(it->slabs_clsid);
+        //print_buckets(it->slabs_clsid);
+        //assert(0);
+      }
+      //assert ( search->activity >= search->next->activity);
+    }
+    j++;
+  }
+  //fprintf(stderr, "\n");
+#if printfUG_PRINT
+  if (search != NULL) {
+    printf("(%s,%u)\n", ITEM_key(search), search->activity);
   }
 #endif
-
-#if USE_GHOSTLIST
-  if ((hv % R) != 0) return; // sampling
-  int tid = get_thread_id();
-  //char *key = ITEM_key(e);
-  //int nkey = e->nkey;
-  //printf("evict(%s)\n", key);
-
-  dablooms_hash_func_with_hv(cfs[HeadFilter % 3], hv, hashes[tid]);
-
-#if USE_GLOBAL_FILTER
-  // Assume capacity and FPP rate of cfs_global is equal to cfs[i]
-  if (!counting_bloom_check_with_hash(cfs_global, hashes[tid])) {
-    __sync_fetch_and_add(&cfs_global_counter, 1);
-    counting_bloom_add_with_hash(cfs_global, hashes[tid]); // returns 0
+  if (search ==0 ) {
+    assert (j == get_size(it->slabs_clsid));
+    assert(0);
   }
-  if (cfs_global_counter > perfilter) {
-    // Clean the filter
-    cfs_global_counter = 0;
-    memset (cfs_global->bitmap->array, 0, cfs_global->bitmap->bytes);
-  }
+  mutex_unlock(&cache_lock);
+  return j;
+}
+
+void update_pdf(dist *d)
+{
+/*
+  int i;
+  double val = 1.0 / (d->end - d->start);
+  PLUS[d->start] += val; // Every value at [d.start,...,TOTAL_CACHE_SIZE-1] should be incremented by val
+  PLUS[d->end] -= val; // Every value at [d.end,...,TOTAL_CACHE_SIZE-1] should be decremented by val
+*/
+#if USE_GLOBAL_PLUS
+    int count = d->end - d->start;
+    double val = 1.0 / (0.0 + count);
+    valsum += 1;
+    global_plus[d->start] += val;
+    global_plus[d->end] -= val;
 #endif
+}
 
-  if (!counting_bloom_check_with_hash(cfs[HeadFilter % 3], hashes[tid])) {
-    __sync_fetch_and_add(&cfcounters[HeadFilter % 3], 1);
-    counting_bloom_add_with_hash(cfs[HeadFilter % 3], hashes[tid]); // returns 0
+void statistics_hit(int clsid, item *it) {
+  __sync_fetch_and_add(&hits, 1);
+  __sync_fetch_and_add(&requests, 1);
+  //pthread_mutex_lock(&st_lock);
+  assert (it->activity > 0);
+  if(it->activity >0){
+    dist d;
+    //if (it->activity < T)
+    //  it->activity = T;
+    statistics_sanitycheck();
+
+    get_stackdistance(it, &d);
+    update_pdf(&d);
+    //BUCKETS[it->activity % (B+1)]--;
+    age_if_full(clsid);
+    //it->activity = T + B - 1;
+    //BUCKETS[it->activity % (B+1)]++;
+    statistics_sanitycheck();
   }
+  //pthread_mutex_unlock(&st_lock);
+}
 
-  if (R * cfcounters[HeadFilter % 3] > perfilter) {
-    rotateFilters();
+void statistics_evict(unsigned int clsid, unsigned hv, item *it) {
+  act_t savedT, a = it->activity;
+  it->activity=0;
+  assert (a > 0);
+  while (1) {
+    savedT = T;
+    if (a < savedT)
+      __sync_fetch_and_sub(&BUCKETS[savedT % (B+1)], 1);
+    else {
+      assert(a<=B+T-1);
+      __sync_fetch_and_sub(&BUCKETS[a % (B+1)], 1);
+    }
+    if (T == savedT) break;
+    // Revert
+    if (a < savedT)
+      __sync_fetch_and_add(&BUCKETS[savedT % (B+1)], 1);
+    else {
+      __sync_fetch_and_add(&BUCKETS[a % (B+1)], 1);
+    }
+   // Try again in next iteration
   }
-#endif
-
+  //BUCKETS[it->activity % (B+1)]--;
+  it->activity=0;
 }
 
 
 
 void statistics_miss(unsigned int clsid, unsigned int hv) {
-#if USE_GHOSTLIST
-  if ( (hv % R) != 0) return; // sampling
-  int tid = get_thread_id();
-  // for memcached, reuse the hash value from the hash table! done :-)
-  dablooms_hash_func_with_hv(cfs[0], hv, hashes[tid]);
-
-#if USE_GLOBAL_FILTER
-  // First see if the element is even in the ghost filter
-  if (!counting_bloom_check_with_hash(cfs_global, hashes[tid]))
-     return; // Stop early
-#endif
-
-  int realstart = 0, realend = 0;
-
-  bool found = false;
-  int i;
-  for (i = 0; i < 3; i++) {
-    realend += R * cfcounters[(HeadFilter + i) % 3];
-    if (counting_bloom_check_with_hash(cfs[(HeadFilter + i) % 3], hashes[tid])) {
-      found = true;
-      break;
-    }
-
-    realstart += R * cfcounters[(HeadFilter + i) % 3];
-  }
-
-  /*else if (counting_bloom_check_with_hash(cfs[(HeadFilter + 1) % 3], hashes[tid])) {
-    __sync_fetch_and_add(&cfcounters[(HeadFilter + 1) % 3], -1);
-    newghosthits += 1.0 * (1.0 - FPP_RATE);
-    counting_bloom_remove_with_hash(cfs[(HeadFilter + 1) % 3], hashes[tid]);
-    //counting_bloom_add_with_hash(cfs[HeadFilter % 3], hashes[tid]);
-    printf("found in second, ghosthits=%f!\n", ghosthits);
-  } else if (counting_bloom_check_with_hash(cfs[(HeadFilter + 2) % 3], hashes[tid])) {
-    __sync_fetch_and_add(&cfcounters[(HeadFilter + 2) % 3], -1);
-    counting_bloom_remove_with_hash(cfs[(HeadFilter + 2) % 3], hashes[tid]);
-    counting_bloom_add_with_hash(cfs[HeadFilter % 3], hashes[tid]);
-    printf("found in third, ghosthits=%f!\n", ghosthits);
-    int firsttwo =  cfcounters[HeadFilter % 3] + cfcounters[(HeadFilter + 1) % 3];
-    int last = cfcounters[(HeadFilter + 2) % 3];
-    if (firsttwo >= ghostlistcapacity) {
-      prob_in_bounds =  (0.0 + ghostlistcapacity - firsttwo) / (0.0 + last);
-    }
-     newghosthits += 1.0 * (1.0 - FPP_RATE) * prob_in_bounds;
-  } else {
-    //printf("found nowhere :/\n");
-    // XXX: (YV) Should we not just return? Clearly this item was not in our ghostlist
-    return;
-  }
-  */
-  if (found) {
-    //printf("found\n");
-    ghosthits += R * 1.0 * (1.0 - FPP_RATE);
-    // if __sync_bool_compare_and_swap fails just continue
-    // __sync_bool_compare_and_swap((unsigned int *)&ghosthits, (unsigned int)oldghosthits, (unsigned int)newghosthits);
-
-    float val = R * (1.0 / (realend - realstart) ) *  (1.0 - FPP_RATE);
-    int start = (int) (100.0 * (realstart / ghostlistcapacity)); // floor
-    int end = (int) (0.5 + ( 100.0 *  (realend / ghostlistcapacity))); // ceil
-    if (end > 100) end = 100;
-
-    // TODO: CAS this
-    ghostplus[tid][start] += val;
-    ghostplus[tid][end] -= val;
-  }
-#endif
+  __sync_fetch_and_add(&misses, 1);
+  __sync_fetch_and_add(&requests, 1);
 }
 
 void print_ghosthits() {
@@ -438,18 +493,17 @@ void print_ghosthits() {
 }
 
 
-void statistics_set(int clsid, item *e) {
-#if USE_ROUNDER
+void statistics_set(int clsid, item *it) {
+  //assert(it->activity==0);
+  statistics_sanitycheck();
+  // Age other elements (if the first bin is full) before putting this element in the first bin
   age_if_full(clsid);
+  //act_t newval = T + B -1;
 
-  int last = classes[clsid].stail;
-  if (e->activity < last) {
-    e->activity = last;
-  }
-
-  int head = add_to_head(clsid); // why set the head ?
-  e->activity = head;
-#endif
+  it->activity = T + B - 1; // Top val
+  __sync_fetch_and_add(&BUCKETS[it->activity % (B+1)],1);
+  //__sync_fetch_and_add(&BUCKETS[it->activity % (B+1)], 1); // what if T changes in the meantime ...
+  statistics_sanitycheck();
 }
 
 
@@ -465,7 +519,6 @@ void rotateFilters(void) {
   // make this atomic !!
   cfcounters[last] = 0;
   HeadFilter = (HeadFilter + 2 ) % 3;
-
 }
 
 

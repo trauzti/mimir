@@ -58,8 +58,16 @@ void item_stats_reset(void) {
 /* MIMIR HACK */
 unsigned int get_size(int clsid)
 {
+  //printf("get_size(%d)=%u\n", clsid, sizes[clsid]);
+  return 50000; // TODO: remove this, just checking the ycsb b2 cdf
 	return sizes[clsid];
 }
+
+item *get_head(int clsid)
+{
+	return heads[clsid];
+}
+
 #endif
 
 
@@ -231,7 +239,7 @@ item *do_item_alloc(char *key, const size_t nkey, const int flags,
 #ifdef MIMIR
     //it->activity = 0; // This is initialized in statistics_set
 #if USE_GHOSTLIST
-    it->mimir_hash = MurmurHash3_x86_32(key, nkey);
+    //it->mimir_hash = MurmurHash3_x86_32(key, nkey);
 #endif
 #endif
     it->nbytes = nbytes;
@@ -328,11 +336,11 @@ static void item_unlink_q(item *it) {
      mimir_enqueue_key (MIMIR_TYPE_EVICT, it->slabs_clsid, ITEM_key(it), it->nkey);
   #else
     /* May be faster to just bypass memory */
-    //statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
-    if (it->mimir_hash == 0UL)
-        it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
-    if ((it->mimir_hash % R) == 0)
-        statistics_evict (it->slabs_clsid, it->mimir_hash, it);
+    statistics_evict (it->slabs_clsid, MurmurHash3_x86_32(ITEM_key(it), it->nkey), it);
+    //if (it->mimir_hash == 0UL)
+    //    it->mimir_hash = MurmurHash3_x86_32(ITEM_key(it), it->nkey);
+    //if ((it->mimir_hash % R) == 0)
+    //    statistics_evict (it->slabs_clsid, it->mimir_hash, it);
   #endif
  #endif
 #endif
