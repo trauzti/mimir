@@ -17,7 +17,6 @@ class alg:
         self.mattson = True
 
     def writeStatistics(self):
-        print "Writing the CDF to a file"
         self.cdf = make_cdf(self.hitarray, self.cachesize, self.requestcount)
         if not os.path.exists("cdfs"):
             os.mkdir("cdfs")
