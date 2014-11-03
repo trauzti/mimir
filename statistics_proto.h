@@ -32,7 +32,7 @@ typedef struct
 typedef struct _classstats {
 	int stail;
 	unsigned int *buckets;
-	float *plus;
+	double *plus;
 //	float *ghostplus;
 } classstats;
 typedef unsigned int act_t;
@@ -44,7 +44,7 @@ extern int B; // number of buckets
 extern int R; // number of buckets
 extern int *stails; // tail values, need to use % B to get the bucket index
 extern unsigned int **buckets; // buckets[POWER_LARGEST][8]; 
-extern float **plus; // plus[POWER_LARGEST][101];
+extern double **plus; // plus[POWER_LARGEST][101];
 extern float **ghostplus; // plus[POWER_LARGEST][101];
 extern uint32_t **hashes;
 extern float ghosthits;

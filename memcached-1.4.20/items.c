@@ -417,6 +417,7 @@ void do_item_update(item *it) {
 #ifdef MIMIR
     /* MIMIR HACK */
     statistics_hit (it->slabs_clsid, it);
+    //printf("current time=%u\n", current_time);
 #endif
 
     MEMCACHED_ITEM_UPDATE(ITEM_key(it), it->nkey, it->nbytes);

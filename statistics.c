@@ -16,13 +16,14 @@
 #include "statistics_proto.h"
 #include "murmur3_hash.h"
 
-#define printfUG_PRINT 0
+#define DEBUG_PRINT 0
+#define TIME_MAX 31*24*60*60
 
 int R = 100;
 float valsum = 0.0;
 static size_t hits, misses, requests, PER_BIN;
 static double *PLUS, *CDF;
-static int *BUCKETS;
+static int *BUCKETS, *TIMECDF;
 unsigned int T = 0;
 int TOTAL_CACHE_SIZE=0, BITS=0;
 pthread_mutex_t age_lock, st_lock;
@@ -46,7 +47,6 @@ struct {
 
 
 #define FPP_RATE 0.05 // XXX: YMIR I just changed this in hope of getting more performance (at the cost of accuracy)
-
 
 
 // set 0 for the last bucket and make it first
@@ -114,6 +114,17 @@ bool atomic_set_and_mark(unsigned int *x, unsigned int exp, unsigned int newv) {
 
 
 void statistics_init(int numbuckets, int mR) {
+  classstats *cs;
+
+  classes = (classstats *) calloc(POWER_LARGEST, sizeof(classstats));
+  ghostplus = (float **) calloc(5, sizeof(float *));
+  int clsid;
+  for (clsid = 0; clsid < POWER_LARGEST; clsid++) {
+    cs = &classes[clsid];
+    cs->stail = 0;
+    cs->buckets = (unsigned int *)calloc(B, sizeof(unsigned int));
+    cs->plus = (double *) calloc(100000, sizeof( double )); // future support
+  }
 #if USE_GLOBAL_PLUS
   global_plus = calloc(100000, sizeof(double));
   accurate_pdf = calloc(100000, sizeof(int));
@@ -134,8 +145,8 @@ void statistics_init(int numbuckets, int mR) {
       "(TOTAL_CACHE_SIZE, B, PER_BIN )=(%u,%d,%zu)\n",
       TOTAL_CACHE_SIZE, B, PER_BIN);
 
-
   CDF = (double *) calloc(TOTAL_CACHE_SIZE + 1, sizeof(double));
+  TIMECDF = (int *) calloc(TIME_MAX, sizeof(int)); // one month max
   PLUS = (double *) calloc(TOTAL_CACHE_SIZE + 1, sizeof(double));
   BUCKETS = (int *) calloc(B+1, sizeof(int));
   for (i = 0; i <= B; i++)
@@ -235,17 +246,21 @@ void update_plus(int clsid, int realstart, int realend) {
 #if USE_GLOBAL_PLUS
   int count = realend - realstart;
   double val = 1.0 / (0.0 + count);
-  valsum += 1;
-  global_plus[realstart] += val;
-  global_plus[realend] -= val;
+
+  //valsum += 1;
+  //global_plus[realstart] += val;
+  //global_plus[realend] -= val;
+
+  classes[clsid].plus[realstart] += val;
+  classes[clsid].plus[realend] -= val;
 
   assert (realstart >=0 );
-#if printfUG_PRINT
+#if DEBUG_PRINT
   int bucketsum = print_buckets(clsid);
 
   assert (realend <= bucketsum );
 #endif
-#if printfUG_PRINT
+#if DEBUG_PRINT
   printf("realstart, realend, valsum, bucketsum==(%d,%d,%f,%d)\n", realstart, realend, valsum, bucketsum);
 #endif
 #endif
@@ -273,10 +288,11 @@ void update_plus(int clsid, int realstart, int realend) {
     start = 0;
   }
   */
-  update_mapped_plus(clsid, start, end);
+  //update_mapped_plus(clsid, start, end);
 }
 
 void update_mapped_plus(int clsid, int start, int end) {
+  // Resize the array if end is bigger than the size
   if (start < 0 || start > 100) {
     start = 0;
     ++failures;
@@ -298,16 +314,14 @@ void update_mapped_plus(int clsid, int start, int end) {
   int count = end - start;
   double val = 1.0 / (0.0 + count);
 
-  //plus[clsid][start] += val;
-  //plus[clsid][end] -= val;
 
   // just to check if the threads are the bottleneck
   // XXX YV: removed the 'tid' index to the plus array. threads may become a bottleneck again
   // TS: put the tid val again
   //int tid = get_thread_id();
-  int tid = get_thread_id();
-  classes[tid].plus[start] += val;
-  classes[tid].plus[end] -= val;
+ // int tid = get_thread_id();
+  classes[clsid].plus[start] += val;
+  classes[clsid].plus[end] -= val;
 
   // equivalent to:
   // for (int i = start; i < end; i++) {
@@ -365,19 +379,19 @@ int get_true_stackdistance(item *it)
   mutex_lock(&cache_lock);
   item *search;
   int j=0;
-#if printfUG_PRINT
+#if DEBUG_PRINT
   printf("head and down: ");
 #endif
   search = get_head(it->slabs_clsid);
   for(;search!=it && search !=0;search=search->next)
   {
 
-#if printfUG_PRINT
+#if DEBUG_PRINT
     printf("(%s,%u), ", ITEM_key(search), search->activity);
 #endif
     if (search->next != NULL) {
       if (search->activity < search->next->activity) {
-#if printfUG_PRINT
+#if DEBUG_PRINT
         printf("(%s,%u)\n", ITEM_key(search->next), search->next->activity);
         fflush(stdout);
 #endif
@@ -391,7 +405,7 @@ int get_true_stackdistance(item *it)
     j++;
   }
   //fprintf(stderr, "\n");
-#if printfUG_PRINT
+#if DEBUG_PRINT
   if (search != NULL) {
     printf("(%s,%u)\n", ITEM_key(search), search->activity);
   }
@@ -422,11 +436,17 @@ void update_pdf(dist *d)
 }
 
 void statistics_hit(int clsid, item *it) {
+  unsigned int timediff = current_time - it->time;
+  //  ITEM_UPDATE_INTERVAL is 60 seconds so the diff can be 60 seconds for recently accessed items
+  printf("HIT(%s). Least recent access=%u, current_time=%u, diff=%u\n",ITEM_key(it), it->time, current_time, current_time - it->time);
+  // TODO: toggle timestamp monitoring on/off with a telnet command
+  //       Similar to þ
+  // TODO: Export this CDF. This is more useful than our HRC and this is also faster to generate.
   __sync_fetch_and_add(&hits, 1);
   __sync_fetch_and_add(&requests, 1);
   //pthread_mutex_lock(&st_lock);
   assert (it->activity > 0);
-  if(it->activity >0){
+  if(it->activity >0) {
     dist d;
     //if (it->activity < T)
     //  it->activity = T;
@@ -434,6 +454,12 @@ void statistics_hit(int clsid, item *it) {
 
     get_stackdistance(it, &d);
     update_pdf(&d);
+    if (timediff < TIME_MAX) {
+      TIMECDF[timediff]++;
+    } else {
+      printf("timediff %u > TIME_MAX=%u\n", timediff, TIME_MAX);
+    }
+    update_plus(clsid, d.start, d.end);
     //BUCKETS[it->activity % (B+1)]--;
     age_if_full(clsid);
     //it->activity = T + B - 1;
@@ -465,7 +491,7 @@ void statistics_evict(unsigned int clsid, unsigned hv, item *it) {
    // Try again in next iteration
   }
   //BUCKETS[it->activity % (B+1)]--;
-  it->activity=0;
+  it->activity = 0;
 }
 
 
