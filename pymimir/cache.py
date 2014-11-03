@@ -13,7 +13,7 @@ verbose = True
 
 from twisted.internet import reactor, protocol
 
-import ARC, CLOCK, LRU, LFU, LRU3, LRU10, RANDOM
+import ARC, CLOCK, LRU, LFU, LRU3, LRU10, RANDOM, MATTSON
 
 from statistics import statscollector
 
@@ -22,6 +22,7 @@ cache_algorithms = {
     "ARC": ARC.alg,
     "CLOCK": CLOCK.alg,
     "LRU": LRU.alg,
+    "MATTSON": MATTSON.alg,
     "LRU3": LRU3.alg,
     "LRU10": LRU10.alg,
     "LFU": LFU.alg,
@@ -184,10 +185,13 @@ class Cache(object):
         self.size = size
         self.cache = cache_algorithms[name](size)
         self.R = R
-        self.cache.stats = statscollector(size=size, bc=bc, filters=filters, R=R)
         print "Cache initialized. Algorithm=%s, size=%d" % (name, size)
+        if name != "MATTSON":
+            self.cache.stats = statscollector(size=size, bc=bc, filters=filters, R=R)
+
     def put(self, *args, **kwargs):
         return self.cache.put(*args, **kwargs)
+
     def get(self, *args, **kwargs):
         return self.cache.get(*args, **kwargs)
 
@@ -216,25 +220,31 @@ class Cache(object):
             l = line.split(" ")
             if not self.get(l[0]):
                 self.put(l[0], l[0])
-        self.cache.stats.collectStatistics()
-        jcdf = self.cache.stats.jcdf
 
         # filename: algorithm_trace_buckets_cachesize_ghostlistsize
         trcbase = os.path.split(filename)[-1].replace(".trc", "")
         trcbase = trcbase.replace("_", "")
         fprefix = "output/%s_%s_%d_%d_%d_R%d" % (self.name, trcbase, self.bc, self.size, self.size, self.R)
+
+        """
+        cache.cache.stats.collectStatistics()
+        jcdf = self.cache.stats.jcdf
         self.cache.stats.printStatistics("%s.stats" % fprefix)
         cache.cache.stats.ghostlist.printStatistics("%s.ghoststats" % fprefix)
+
+
         f = open("%s.histogram" % fprefix , "w")
         for i in xrange(len(jcdf)):
             f.write("%d %f\n" % (i, jcdf[i]))
         f.close()
+        """
 
-
-### The telnet interface ###
-class TelnetCommandInterface(object):
-    def __init__(self):
-        pass
+        if cache.name == "MATTSON":
+            cache.cache.writeStatistics()
+        else:
+            cache.cache.stats.collectStatistics()
+            cache.cache.stats.printStatistics()
+            cache.cache.stats.ghostlist.printStatistics()
 
 
 if __name__ == "__main__":
@@ -259,6 +269,11 @@ if __name__ == "__main__":
     else:
         print "Reading requests from stdin"
         cache.stdin()
-    cache.cache.stats.printStatistics()
-    cache.cache.stats.ghostlist.printStatistics()
+
+    if cache.name == "MATTSON":
+        cache.cache.writeStatistics()
+    else:
+        cache.cache.stats.collectStatistics()
+        cache.cache.stats.printStatistics()
+        cache.cache.stats.ghostlist.printStatistics()
 
