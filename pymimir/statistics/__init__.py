@@ -52,6 +52,8 @@ class statscollector(object):
             print s
 
         cdffile = "cdfs/rounder_size=%d_R=%d_B=%d.txt" % (self.size, self.R, self.bc)
+        if not os.path.exists("cdfs"):
+            os.mkdir("cdfs")
         with open(cdffile, "w") as f:
             f.write('\n'.join(map(str, self.cdf)) + '\n')
 
