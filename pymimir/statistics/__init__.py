@@ -14,9 +14,10 @@ class statscollector(object):
         self.bc = bc
         self.R = R
         self.filters = filters
-        self.stats = rounder.statclass(size, bc)
+        self.stats = rounder.statclass(size, bc, R=R)
         # default 3 filters in the countingghost class
         self.ghostlist = countingghost.ghostclass(capacity=size, R=R)
+
 
     def Miss(self, key):
         self.stats.Miss(key)
@@ -35,18 +36,24 @@ class statscollector(object):
     # must call collectStatistics first!!
     def printStatistics(self, filename=None):
         size = self.size
+        self.stats.printSamplingStats()
         s = ""
         s += "Hits=%d, Misses=%d, Requests=%d, R=%d\n" % (self.stats.hits, self.stats.misses, self.stats.requests, self.R)
         s += "CDF here meaning, cache of size 1 etc (not stack distances)\n"
         s += "cdf[1]=%.5f cdf[%d]=%.5f\n" % (self.cdf[1], size, self.cdf[size])
         s += "gcdf[1]=%.5f gcdf[%d]=%.5f\n" % (self.gcdf[1], size, self.gcdf[size])
         s += "jcdf[1]=%.5f jcdf[%d]=%.5f\n" % (self.jcdf[1], 2*size, self.jcdf[2*size])
+
         if filename:
             f = open(filename, "w")
             f.write(s)
             f.close()
         else:
             print s
+
+        cdffile = "cdfs/rounder_size=%d_R=%d_B=%d.txt" % (self.size, self.R, self.bc)
+        with open(cdffile, "w") as f:
+            f.write('\n'.join(map(str, self.cdf)) + '\n')
 
     def collectStatistics(self):
         size = self.size
