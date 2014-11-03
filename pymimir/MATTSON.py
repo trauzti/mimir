@@ -19,6 +19,8 @@ class alg:
     def writeStatistics(self):
         print "Writing the CDF to a file"
         self.cdf = make_cdf(self.hitarray, self.cachesize, self.requestcount)
+        if not os.path.exists("cdfs"):
+            os.mkdir("cdfs")
         with open("cdfs/mattson_size=%d.txt" % self.cachesize, "w") as f:
             f.write('\n'.join(map(str, self.cdf)) + '\n')
 
