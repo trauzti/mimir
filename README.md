@@ -8,6 +8,11 @@ The cache profiling framework from my masters thesis
     M M   M M  I  M M   M M  I M M   M M  I  RRRRRR
     M  M M  M  I  M  M M  M  I M  M M  M  I  R    R 
     M   M   M  I  M   M   M  I M   M   M  I  R     R
+    
+
+Paper
+======
+Available at www.mimircache.com
 
 
 pymimir
